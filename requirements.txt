@@ -1,0 +1,8 @@
+flask==2.0.1
+openai>=1.0.0
+manim==0.18.1
+python-dotenv==0.19.0
+werkzeug==2.0.1
+requests==2.26.0
+supabase==2.3.0
+PyJWT==2.8.0
