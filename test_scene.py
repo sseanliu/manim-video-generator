@@ -1,19 +1,22 @@
 from manim import *
-import numpy as np
 
-class MainScene(Scene):
+class TestScene(Scene):
     def construct(self):
-        # Set background color
-        self.camera.background_color = "#333333"
+        # Create a simple circle
+        circle = Circle(radius=2.0)
+        circle.set_color(BLUE)
         
-        # Create objects
-        circle = Circle(radius=2, color=BLUE)
-        square = Square(side_length=2, color=RED)
+        # Create some text
+        text = Text("Test Animation")
+        text.to_edge(UP)
         
-        # Animate
+        # Show the circle and text
         self.play(Create(circle))
-        self.play(Transform(circle, square))
+        self.play(Write(text))
         
-        # Clean up
-        self.play(FadeOut(circle))
-        self.wait()
+        # Animate the circle
+        self.play(circle.animate.scale(0.5))
+        self.wait(1)
+        
+        # Fade out
+        self.play(FadeOut(circle), FadeOut(text))

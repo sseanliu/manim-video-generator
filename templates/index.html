@@ -1,84 +1,37 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="min-h-screen bg-gradient-to-br from-indigo-500 to-purple-600">
-    <div class="container mx-auto px-4 py-16">
-        <div class="max-w-4xl mx-auto">
-            <!-- Hero Section -->
-            <div class="text-center mb-16">
-                <h1 class="text-5xl font-bold text-white mb-6">
-                    AI-Powered Manim Video Generator
+<div class="min-h-screen bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-4xl mx-auto">
+        <div class="bg-white rounded-xl shadow-lg p-8">
+            <div class="text-center mb-8">
+                <h1 class="text-4xl font-bold text-gray-900 mb-4">
+                    Manim Video Generator
                 </h1>
-                <p class="text-xl text-white opacity-90">
-                    Create beautiful mathematical animations with the power of AI
+                <p class="text-lg text-gray-600">
+                    Generate beautiful math animations with ease
                 </p>
             </div>
 
-            <!-- Main Form -->
-            <div class="bg-white rounded-lg shadow-xl p-8">
-                <div class="mb-8">
-                    <label for="prompt" class="block text-sm font-medium text-gray-700 mb-2">
-                        Describe your mathematical animation
+            <form id="generation-form" class="space-y-6">
+                <div>
+                    <label for="concept" class="block text-sm font-medium text-gray-700">
+                        Enter your mathematical concept
                     </label>
-                    <textarea
-                        id="prompt"
-                        rows="4"
-                        class="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                        placeholder="Example: Show a circle transforming into a square with a smooth animation"></textarea>
+                    <textarea id="concept" name="concept" rows="4" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="Describe the mathematical concept you want to animate..."></textarea>
                 </div>
 
-                <div class="mb-8">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                        Animation Style
-                    </label>
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <button
-                            class="style-btn px-4 py-3 border border-gray-300 rounded-md hover:border-indigo-500 focus:ring-2 focus:ring-indigo-500"
-                            data-style="default">
-                            Default
-                        </button>
-                        <button
-                            class="style-btn px-4 py-3 border border-gray-300 rounded-md hover:border-indigo-500 focus:ring-2 focus:ring-indigo-500"
-                            data-style="modern">
-                            Modern
-                        </button>
-                        <button
-                            class="style-btn px-4 py-3 border border-gray-300 rounded-md hover:border-indigo-500 focus:ring-2 focus:ring-indigo-500"
-                            data-style="minimal">
-                            Minimal
-                        </button>
-                    </div>
-                </div>
-
-                <div class="text-center">
-                    <button
-                        id="generate-btn"
-                        class="w-full sm:w-auto px-8 py-3 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                <div>
+                    <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                         Generate Animation
                     </button>
                 </div>
+            </form>
 
-                <!-- Loading Spinner -->
-                <div id="loading" class="hidden mt-8 text-center">
-                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-indigo-500 border-t-transparent"></div>
-                    <p class="mt-2 text-gray-600">Generating your animation...</p>
-                </div>
-
-                <!-- Error Message -->
-                <div id="error" class="hidden mt-8 p-4 bg-red-50 border border-red-200 rounded-md">
-                    <p class="text-red-600"></p>
-                </div>
-
-                <!-- Video Result -->
-                <div id="result" class="hidden mt-8">
-                    <video id="video-player" class="w-full rounded-lg shadow-lg" controls>
-                        Your browser does not support the video tag.
-                    </video>
-                    <div class="mt-4 text-center">
-                        <a id="download-btn" href="#" download class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700">
-                            Download Video
-                        </a>
-                    </div>
+            <div id="video-container" class="mt-8 hidden">
+                <h2 class="text-lg font-medium text-gray-900 mb-4">Generated Animation</h2>
+                <div id="video-wrapper" class="aspect-w-16 aspect-h-9 bg-gray-100 rounded-lg">
+                    <!-- Video will be inserted here -->
                 </div>
             </div>
         </div>
@@ -88,78 +41,56 @@
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Check authentication status
-    if (!clerk.user) {
-        window.location.href = '/auth/sign-in';
-        return;
-    }
-
-    const prompt = document.getElementById('prompt');
-    const generateBtn = document.getElementById('generate-btn');
-    const loading = document.getElementById('loading');
-    const error = document.getElementById('error');
-    const result = document.getElementById('result');
-    const videoPlayer = document.getElementById('video-player');
-    const downloadBtn = document.getElementById('download-btn');
-    let selectedStyle = 'default';
-
-    // Style selection
-    document.querySelectorAll('.style-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.style-btn').forEach(b => 
-                b.classList.remove('border-indigo-500', 'bg-indigo-50'));
-            btn.classList.add('border-indigo-500', 'bg-indigo-50');
-            selectedStyle = btn.dataset.style;
-        });
-    });
-
-    // Generate video
-    generateBtn.addEventListener('click', async () => {
-        if (!prompt.value.trim()) {
-            showError('Please enter a description for your animation.');
-            return;
-        }
+    document.getElementById('generation-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const form = new FormData(this);
+        const button = this.querySelector('button');
+        const videoContainer = document.getElementById('video-container');
+        const videoWrapper = document.getElementById('video-wrapper');
+        
+        // Show loading state
+        button.disabled = true;
+        button.textContent = 'Generating...';
+        videoContainer.classList.remove('hidden');
+        videoWrapper.innerHTML = `
+            <div class="flex items-center justify-center h-full">
+                <div class="animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent"></div>
+            </div>
+        `;
 
         try {
-            loading.classList.remove('hidden');
-            error.classList.add('hidden');
-            result.classList.add('hidden');
-            generateBtn.disabled = true;
-
             const response = await fetch('/generate', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    prompt: prompt.value.trim(),
-                    style: selectedStyle
-                })
+                body: form
             });
 
             const data = await response.json();
-
+            
             if (!response.ok) {
                 throw new Error(data.error || 'Failed to generate video');
             }
 
-            videoPlayer.src = data.video_url;
-            downloadBtn.href = data.video_url;
-            result.classList.remove('hidden');
-
-        } catch (err) {
-            showError(err.message);
+            // Add timestamp to prevent caching
+            const videoUrl = `${data.video_url}?t=${Date.now()}`;
+            
+            // Create video element
+            videoWrapper.innerHTML = `
+                <video controls autoplay class="w-full h-full rounded-lg">
+                    <source src="${videoUrl}" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            `;
+        } catch (error) {
+            videoWrapper.innerHTML = `
+                <div class="flex items-center justify-center h-full text-red-500">
+                    ${error.message}
+                </div>
+            `;
         } finally {
-            loading.classList.add('hidden');
-            generateBtn.disabled = false;
+            button.disabled = false;
+            button.textContent = 'Generate Animation';
         }
     });
-
-    function showError(message) {
-        error.querySelector('p').textContent = message;
-        error.classList.remove('hidden');
-    }
-});
 </script>
 {% endblock %}
