@@ -6,6 +6,11 @@ import logging
 import uuid
 import shutil
 from manim import *
+from openai import OpenAI
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 app = Flask(__name__)
 
@@ -13,13 +18,14 @@ app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Initialize OpenAI client
+client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+
 # Set media and temporary directories with fallback to local paths
 if os.environ.get('DOCKER_ENV'):
-    # In Docker container
     app.config['MEDIA_DIR'] = os.getenv('MEDIA_DIR', '/app/media')
     app.config['TEMP_DIR'] = os.getenv('TEMP_DIR', '/app/tmp')
 else:
-    # Local development
     app.config['MEDIA_DIR'] = os.path.join(os.path.dirname(__file__), 'media')
     app.config['TEMP_DIR'] = os.path.join(os.path.dirname(__file__), 'tmp')
 
@@ -27,130 +33,170 @@ else:
 os.makedirs(app.config['MEDIA_DIR'], exist_ok=True)
 os.makedirs(app.config['TEMP_DIR'], exist_ok=True)
 os.makedirs(os.path.join(app.config['MEDIA_DIR'], 'videos', 'scene', '720p30'), exist_ok=True)
-
-# Ensure static/videos directory exists
 os.makedirs(os.path.join(app.static_folder, 'videos'), exist_ok=True)
 
-class MainScene(Scene):
-    def construct(self):
-        # Create a simple circle
-        circle = Circle(radius=2, color=BLUE)
-        
-        # Show the circle being drawn
-        self.play(Create(circle))
-        self.wait(0.5)
-        
-        # Add a dot at the center
-        dot = Dot(color=RED)
-        self.play(Create(dot))
-        
-        # Move the dot around
-        self.play(dot.animate.shift(RIGHT * 2), run_time=1)
-        self.play(dot.animate.shift(UP * 2), run_time=1)
-        self.play(dot.animate.shift(LEFT * 2), run_time=1)
-        self.play(dot.animate.shift(DOWN * 2), run_time=1)
-        
-        # Cleanup
-        self.play(
-            FadeOut(circle),
-            FadeOut(dot)
-        )
-
-def create_manim_video():
-    """Create video using Manim"""
-    tmp_dir = None
+def generate_manim_code(concept):
+    """Generate Manim code using GPT based on the given concept"""
     try:
-        # Create a temporary directory within our designated tmp directory
-        tmp_dir = tempfile.mkdtemp(dir=app.config['TEMP_DIR'])
-        logger.info(f"Created temporary directory: {tmp_dir}")
-        
-        # Write code to file
-        script_path = os.path.join(tmp_dir, 'scene.py')
-        with open(script_path, 'w') as f:
-            f.write('''
-from manim import *
+        example_scene = '''from manim import *
 
 class MainScene(Scene):
     def construct(self):
-        # Create initial shapes
-        circle = Circle(radius=2, color=BLUE)
-        square = Square(side_length=4, color=GREEN)
-        triangle = Triangle(color=RED).scale(2)
-        
-        # Position shapes
-        circle.shift(LEFT * 4)
-        triangle.shift(RIGHT * 4)
-        
-        # Create the shapes with animations
-        self.play(Create(circle))
-        self.wait(0.5)
-        
-        self.play(Create(square))
-        self.wait(0.5)
-        
-        self.play(Create(triangle))
-        self.wait(0.5)
-        
-        # Move shapes to center and create a composition
-        self.play(
-            circle.animate.shift(RIGHT * 4),
-            square.animate.shift(LEFT * 0),
-            triangle.animate.shift(LEFT * 4)
-        )
+        # Create title
+        title = Text("Quadratic Function", font_size=40)
+        self.play(Write(title))
         self.wait(1)
+        self.play(title.animate.to_edge(UP))
         
-        # Rotate the composition
-        self.play(
-            Rotate(circle, angle=PI),
-            Rotate(square, angle=PI/2),
-            Rotate(triangle, angle=-PI)
+        # Create axes without numbers (to avoid LaTeX)
+        axes = Axes(
+            x_range=[-4, 4, 1],
+            y_range=[-2, 6, 1],
+            tips=True,
+            axis_config={"include_numbers": False}
         )
-        self.wait(1)
+        self.play(Create(axes))
         
-        # Scale animation
-        self.play(
-            circle.animate.scale(0.5),
-            square.animate.scale(0.75),
-            triangle.animate.scale(0.5)
+        # Create quadratic function
+        parabola = axes.plot(
+            lambda x: x**2,
+            x_range=[-2, 2],
+            color=BLUE
         )
-        self.wait(1)
+        self.play(Create(parabola))
         
-        # Final fade out
-        self.play(
-            FadeOut(circle),
-            FadeOut(square),
-            FadeOut(triangle)
+        # Add simple text labels instead of LaTeX
+        x_label = Text("x", font_size=24).next_to(axes.x_axis, DOWN)
+        y_label = Text("y", font_size=24).next_to(axes.y_axis, LEFT)
+        labels = VGroup(x_label, y_label)
+        self.play(Create(labels))
+        
+        # Add equation as text
+        equation = Text("y = x²", font_size=36).next_to(title, DOWN)
+        self.play(Write(equation))
+        
+        self.wait(2)'''
+
+        prompt = f"""Create a Manim scene that explains and visualizes the following mathematical concept: {concept}
+
+        Requirements:
+        1. The scene class must be named 'MainScene' and inherit from Scene
+        2. Follow this structure for the code:
+           - Start with imports
+           - Create a MainScene class
+           - In construct method, build the visualization step by step
+        3. Include these elements:
+           - Title text introducing the concept
+           - Clear visual elements (graphs, shapes, etc.)
+           - Step-by-step animations with self.play()
+           - Appropriate wait times with self.wait()
+           - Use Text() for labels instead of MathTex() to avoid LaTeX dependencies
+        4. For plotting graphs:
+           - Create Axes with include_numbers=False to avoid LaTeX
+           - Plot functions using: axes.plot(lambda x: f(x), x_range=[min, max])
+           - Add labels with Text() class
+        5. Use proper Manim syntax for:
+           - Creating objects (Circle(), Square(), Axes(), etc.)
+           - Animations (Create(), Write(), Transform(), etc.)
+           - Positioning (shift(), next_to(), to_edge(), etc.)
+        
+        Here's an example of good Manim code:
+        {example_scene}
+        
+        Return ONLY the Python code without any markdown formatting or explanation."""
+
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {
+                    "role": "system", 
+                    "content": """You are a Manim expert who creates educational mathematics animations. 
+                    Generate only valid, runnable Manim Python code without any markdown formatting or explanations.
+                    Always include proper imports, clear animations, and step-by-step construction of the scene.
+                    Use Text() for labels instead of MathTex() to avoid LaTeX dependencies.
+                    For plotting graphs, create Axes with include_numbers=False.
+                    Include appropriate wait times between animations."""
+                },
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=2000
         )
-''')
-        logger.info(f"Created scene file at: {script_path}")
+        
+        manim_code = response.choices[0].message.content.strip()
+        
+        # Clean up any markdown formatting that might be present
+        manim_code = manim_code.replace("```python", "").replace("```", "").strip()
+        
+        # Add necessary imports if they're not present
+        if "from manim import *" not in manim_code:
+            manim_code = "from manim import *\n\n" + manim_code
+            
+        logger.info(f"Generated clean Manim code:\n{manim_code}")
+        return manim_code
+    except Exception as e:
+        logger.error(f"Error generating Manim code: {str(e)}")
+        raise
+
+def validate_manim_code(code):
+    """Validate the generated Manim code for syntax errors"""
+    try:
+        compile(code, '<string>', 'exec')
+        return True, None
+    except SyntaxError as e:
+        return False, f"Syntax error in generated code: {str(e)}"
+    except Exception as e:
+        return False, f"Error validating code: {str(e)}"
+
+def create_manim_video(concept):
+    """Create a Manim video based on the given concept"""
+    try:
+        # Create temporary directory
+        temp_dir = tempfile.mkdtemp(dir=app.config['TEMP_DIR'])
+        logger.info(f"Created temporary directory: {temp_dir}")
+        
+        # Generate Manim code
+        manim_code = generate_manim_code(concept)
+        
+        # Validate the generated code
+        is_valid, error = validate_manim_code(manim_code)
+        if not is_valid:
+            raise Exception(f"Invalid Manim code generated: {error}")
+        
+        # Create scene file
+        scene_file = os.path.join(temp_dir, 'scene.py')
+        with open(scene_file, 'w') as f:
+            f.write(manim_code)
+        logger.info(f"Created scene file at: {scene_file}")
         
         # Create media directory inside tmp_dir
-        media_dir = os.path.join(tmp_dir, 'media', 'videos', 'scene', '720p30')
+        media_dir = os.path.join(temp_dir, 'media')
         os.makedirs(media_dir, exist_ok=True)
-        logger.info(f"Created media directory: {media_dir}")
+        os.makedirs(os.path.join(media_dir, 'videos', 'scene', '720p30'), exist_ok=True)
+        os.makedirs(os.path.join(media_dir, 'Tex'), exist_ok=True)
         
         # Set environment variables for Manim
         env = os.environ.copy()
-        env['MEDIA_DIR'] = os.path.join(tmp_dir, 'media')
+        env['MEDIA_DIR'] = media_dir
         
         # Run Manim command
         cmd = [
             'manim',
-            '-qm',  # medium quality
-            '--format=mp4',
-            '--progress_bar=display',
-            '--verbosity=DEBUG',
-            script_path,
-            'MainScene'
+            scene_file,
+            'MainScene',
+            '-pqm',  # preview quality, media file
+            '--format=mp4'
         ]
         logger.info(f"Running command: {' '.join(cmd)}")
         
+        # Run the command
         result = subprocess.run(
             cmd,
-            cwd=tmp_dir,
+            cwd=temp_dir,
             capture_output=True,
             text=True,
-            env=env
+            env=env,
+            timeout=120  # 2 minute timeout
         )
         
         if result.returncode != 0:
@@ -158,33 +204,26 @@ class MainScene(Scene):
             logger.error(f"Stdout: {result.stdout}")
             logger.error(f"Stderr: {result.stderr}")
             raise Exception(f"Failed to generate video: {result.stderr}")
-        else:
-            logger.info(f"Manim stdout: {result.stdout}")
-
-        # Find the generated video file
-        output_dir = os.path.join(tmp_dir, 'media', 'videos', 'scene', '720p30')
-        logger.info(f"Looking for video files in: {output_dir}")
         
-        if not os.path.exists(output_dir):
-            logger.error(f"Output directory does not exist: {output_dir}")
-            raise Exception("Output directory not found")
-            
+        # Find the generated video file
+        output_dir = os.path.join(media_dir, 'videos', 'scene', '720p30')
         video_files = [f for f in os.listdir(output_dir) if f.endswith('.mp4')]
-        logger.info(f"Found video files: {video_files}")
         
         if not video_files:
+            logger.error(f"No video files found in {output_dir}")
+            logger.error(f"Directory contents: {os.listdir(output_dir)}")
             raise Exception("No video file generated")
             
         video_path = os.path.join(output_dir, video_files[0])
-        logger.info(f"Using video file: {video_path}")
+        logger.info(f"Found video file: {video_path}")
         
         # Generate a unique filename for the video
         unique_filename = f"manim_video_{uuid.uuid4().hex[:8]}.mp4"
         target_path = os.path.join(app.static_folder, 'videos', unique_filename)
-        logger.info(f"Moving video to: {target_path}")
         
         # Move the video file to static directory
         shutil.move(video_path, target_path)
+        logger.info(f"Moved video to: {target_path}")
         
         return f"videos/{unique_filename}"
         
@@ -194,10 +233,10 @@ class MainScene(Scene):
     
     finally:
         # Clean up temporary directory
-        if tmp_dir and os.path.exists(tmp_dir):
+        if temp_dir and os.path.exists(temp_dir):
             try:
-                shutil.rmtree(tmp_dir)
-                logger.info(f"Cleaned up temporary directory: {tmp_dir}")
+                shutil.rmtree(temp_dir)
+                logger.info(f"Cleaned up temporary directory: {temp_dir}")
             except Exception as e:
                 logger.error(f"Error cleaning up temporary directory: {str(e)}")
 
@@ -210,15 +249,13 @@ def generate_video():
     try:
         logger.info("Starting video generation")
         concept = request.form.get('concept', '')
+        if not concept:
+            return jsonify({'error': 'No concept provided'}), 400
+            
         logger.info(f"Received concept: {concept}")
         
-        # Check if static/videos directory exists
-        if not os.path.exists(os.path.join(app.static_folder, 'videos')):
-            os.makedirs(os.path.join(app.static_folder, 'videos'))
-            logger.info("Created static/videos directory")
-            
-        # Generate video
-        video_path = create_manim_video()
+        # Generate video with the provided concept
+        video_path = create_manim_video(concept)
         if not video_path:
             logger.error("Video generation returned empty path")
             return jsonify({'error': 'Failed to generate video'}), 500
