@@ -6,10 +6,10 @@
         <div class="bg-white rounded-xl shadow-lg p-8">
             <div class="text-center mb-8">
                 <h1 class="text-4xl font-bold text-gray-900 mb-4">
-                    Manim Video Generator
+                    Mathematical Animation Generator
                 </h1>
                 <p class="text-lg text-gray-600">
-                    Generate beautiful math animations with ease
+                    Generate beautiful math animations with Manim
                 </p>
             </div>
 
@@ -18,15 +18,36 @@
                     <label for="concept" class="block text-sm font-medium text-gray-700">
                         Enter your mathematical concept
                     </label>
-                    <textarea id="concept" name="concept" rows="4" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="Describe the mathematical concept you want to animate..."></textarea>
+                    <textarea id="concept" name="concept" rows="4" 
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" 
+                        placeholder="Example: Show how sine and cosine functions are related on the unit circle"></textarea>
                 </div>
 
                 <div>
-                    <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    <button type="submit" 
+                        class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                         Generate Animation
                     </button>
                 </div>
             </form>
+
+            <div class="mt-8 space-y-4">
+                <h3 class="text-lg font-medium text-gray-900">Example Concepts:</h3>
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="useExample('Show the Pythagorean theorem with a right triangle')" 
+                        class="px-4 py-2 text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 rounded-md">
+                        Pythagorean Theorem
+                    </button>
+                    <button onclick="useExample('Demonstrate how a quadratic function y = x² changes as we move along the x-axis')" 
+                        class="px-4 py-2 text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 rounded-md">
+                        Quadratic Function
+                    </button>
+                    <button onclick="useExample('Visualize the relationship between sine and cosine on the unit circle')" 
+                        class="px-4 py-2 text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 rounded-md">
+                        Trigonometry
+                    </button>
+                </div>
+            </div>
 
             <div id="video-container" class="mt-8 hidden">
                 <h2 class="text-lg font-medium text-gray-900 mb-4">Generated Animation</h2>
@@ -34,6 +55,8 @@
                     <!-- Video will be inserted here -->
                 </div>
             </div>
+
+            <div id="error" class="mt-4 text-red-600 text-center hidden"></div>
         </div>
     </div>
 </div>
@@ -41,13 +64,32 @@
 
 {% block scripts %}
 <script>
+    function useExample(text) {
+        document.getElementById('concept').value = text;
+    }
+
+    function showError(message) {
+        const errorDiv = document.getElementById('error');
+        errorDiv.textContent = message;
+        errorDiv.classList.remove('hidden');
+    }
+
     document.getElementById('generation-form').addEventListener('submit', async function(e) {
         e.preventDefault();
         
-        const form = new FormData(this);
+        const concept = document.getElementById('concept').value.trim();
+        if (!concept) {
+            showError('Please enter a mathematical concept');
+            return;
+        }
+
         const button = this.querySelector('button');
         const videoContainer = document.getElementById('video-container');
         const videoWrapper = document.getElementById('video-wrapper');
+        const errorDiv = document.getElementById('error');
+        
+        // Reset error state
+        errorDiv.classList.add('hidden');
         
         // Show loading state
         button.disabled = true;
@@ -62,13 +104,20 @@
         try {
             const response = await fetch('/generate', {
                 method: 'POST',
-                body: form
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ concept: concept })
             });
 
             const data = await response.json();
             
             if (!response.ok) {
                 throw new Error(data.error || 'Failed to generate video');
+            }
+
+            if (!data.success || !data.video_url) {
+                throw new Error('Invalid response from server');
             }
 
             // Add timestamp to prevent caching
@@ -87,6 +136,7 @@
                     ${error.message}
                 </div>
             `;
+            showError(error.message);
         } finally {
             button.disabled = false;
             button.textContent = 'Generate Animation';

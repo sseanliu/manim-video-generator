@@ -24,6 +24,18 @@ RUN apt-get update && \
     gfortran \
     ffmpeg \
     xvfb \
+    sox \
+    libsox-fmt-all \
+    texlive-latex-base \
+    texlive-fonts-recommended \
+    texlive-latex-recommended \
+    cm-super \
+    dvipng \
+    tipa \
+    texlive-xetex \
+    texlive-extra-utils \
+    texlive-plain-generic \
+    dvisvgm \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
@@ -42,12 +54,16 @@ ENV PATH="/opt/venv/bin:$PATH"
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Create necessary directories with correct permissions
+RUN mkdir -p /app/media/videos/scene/1080p30 \
+    && mkdir -p /app/tmp \
+    && chown -R appuser:appuser /app/media \
+    && chown -R appuser:appuser /app/tmp \
+    && chmod -R 755 /app/media \
+    && chmod -R 755 /app/tmp
+
 # Switch to non-root user
 USER appuser
-
-# Create necessary directories
-RUN mkdir -p /app/media/videos/scene/1080p30 \
-    && mkdir -p /app/tmp
 
 # Copy application files
 COPY --chown=appuser:appuser . .
@@ -60,4 +76,4 @@ ENV MEDIA_DIR=/app/media
 ENV TEMP_DIR=/app/tmp
 
 # Start Xvfb and Gunicorn
-CMD ["sh", "-c", "Xvfb :99 -screen 0 1280x720x24 -ac +extension GLX +render -noreset & gunicorn --bind 0.0.0.0:5001 app:app"]
+CMD ["sh", "-c", "Xvfb :99 -screen 0 1280x720x24 -ac +extension GLX +render -noreset & gunicorn --bind 0.0.0.0:5001 --timeout 300 app:app"]
