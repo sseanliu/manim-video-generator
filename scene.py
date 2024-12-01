@@ -1,10 +1,30 @@
 from manim import *
 import numpy as np
+import os
 
-class MainScene(ThreeDScene):
+# Disable all preview functionality
+config.preview = False
+config.show_in_file_browser = False
+config.save_last_frame = False
+config.write_to_movie = True
+config.disable_caching = True
+config.renderer = "cairo"
+config.preview_command = ""
+
+class ContainerScene(ThreeDScene):
+    def render(self, preview=None):
+        """Override render to prevent preview attempts"""
+        self.setup()
+        self.construct()
+        self.tear_down()
+        
+        # Skip any preview attempts
+        if hasattr(self, "renderer") and hasattr(self.renderer, "file_writer"):
+            self.renderer.file_writer.close_movie_pipe()
+
+class MainScene(ContainerScene):
     def construct(self):
-        # Set background color and camera
-        self.camera.background_color = "#333333"
+        # Set camera
         self.set_camera_orientation(phi=75 * DEGREES, theta=30 * DEGREES)
         
         # Create axes
@@ -27,24 +47,6 @@ class MainScene(ThreeDScene):
         )
         grid.rotate(PI/2, RIGHT)
         
-        # Create a complex surface
-        def complex_surface(u, v):
-            return np.array([
-                u,
-                v,
-                0.5 * np.sin(2*u) * np.cos(2*v)
-            ])
-        
-        surface = Surface(
-            complex_surface,
-            u_range=[-2, 2],
-            v_range=[-2, 2],
-            resolution=(32, 32),
-            fill_opacity=0.7,
-            checkerboard_colors=[BLUE_D, BLUE_E],
-            stroke_opacity=0.5
-        )
-        
         # Create geometric shapes
         shapes = VGroup()
         
@@ -66,57 +68,19 @@ class MainScene(ThreeDScene):
         
         # Add everything to scene
         self.begin_ambient_camera_rotation(rate=0.2)
+        
+        # Create and animate axes and grid
         self.play(Create(axes), Create(grid), run_time=1)
         
-        # Animate surface
-        self.play(Create(surface), run_time=2)
-        self.play(
-            surface.animate.shift(UP),
-            surface.animate.set_opacity(0.8),
-            run_time=1.5
-        )
-        
         # Animate shapes
-        self.play(Create(shapes), run_time=1.5)
+        self.play(Create(shapes), run_time=2)
         
-        # Complex animations
-        self.play(
-            *[
-                Succession(
-                    Rotate(shape, angle=2*PI, axis=RIGHT),
-                    Rotate(shape, angle=2*PI, axis=UP)
-                ) for shape in shapes
-            ],
-            run_time=3
-        )
-        
-        # Wave animation for surface
-        def wave_deform(mob, dt):
-            time = self.renderer.time
-            mob.become(
-                Surface(
-                    lambda u, v: np.array([
-                        u,
-                        v,
-                        0.5 * np.sin(2*u + time) * np.cos(2*v)
-                    ]),
-                    u_range=[-2, 2],
-                    v_range=[-2, 2],
-                    resolution=(32, 32),
-                    fill_opacity=0.7,
-                    checkerboard_colors=[BLUE_D, BLUE_E],
-                    stroke_opacity=0.5
-                ).shift(UP)
-            )
-        
-        surface.add_updater(wave_deform)
-        self.wait(3)
-        surface.clear_updaters()
+        # Add some camera movement
+        self.wait(2)
         
         # Final rotation
         self.play(
-            Rotate(surface, angle=PI, axis=UP),
-            *[Rotate(shape, angle=PI, axis=UP) for shape in shapes],
+            Rotate(shapes, angle=PI, axis=UP),
             run_time=2
         )
         
