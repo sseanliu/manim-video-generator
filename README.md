@@ -3,6 +3,7 @@
 A web-based tool for generating mathematical animations using Manim, Flask, and OpenAI. Create beautiful mathematical visualizations with simple text prompts.
 
 [![manim video generator](https://img.youtube.com/vi/rIltjjzxsGQ/0.jpg)](https://www.youtube.com/watch?v=rIltjjzxsGQ)
+# [Detailed Step-by-Step Guide available here](https://sevalla.com/blog/guide-to-building-an-ai-powered-mathematical-animation-generator/)
 
 ## 🌟 Features
 
