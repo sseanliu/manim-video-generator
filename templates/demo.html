@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Unit Circle</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow: hidden; /* Prevent scrollbars from flashing during resize */
+        }
+        canvas {
+            display: block;
+            background-color: #f0f9ff; /* Light blue background for canvas */
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .controls-container {
+            background-color: white;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .value-display {
+            font-size: 0.875rem; /* text-sm */
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.375rem; /* rounded-md */
+            background-color: #f3f4f6; /* gray-100 */
+            min-width: 100px;
+            text-align: center;
+        }
+        /* Custom slider appearance */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 10px;
+            background: #d1d5db; /* gray-300 */
+            border-radius: 5px;
+            outline: none;
+            opacity: 0.7;
+            transition: opacity .2s;
+        }
+        input[type="range"]:hover {
+            opacity: 1;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #3b82f6; /* blue-500 */
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #3b82f6; /* blue-500 */
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 flex flex-col items-center justify-center min-h-screen p-4 selection:bg-blue-200">
+
+    <div class="w-full max-w-3xl controls-container mb-6">
+        <h1 class="text-2xl font-semibold text-center text-slate-700 mb-4">Unit Circle: Sine & Cosine</h1>
+        <div class="mb-4">
+            <label for="angleSlider" class="block text-sm font-medium text-slate-600 mb-1">Angle: <span id="angleValueDisplay">0</span>°</label>
+            <input type="range" id="angleSlider" min="0" max="360" value="0" class="w-full cursor-pointer">
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+            <div>
+                <p class="text-sm font-medium text-slate-600">Angle (Radians):</p>
+                <p id="angleRadiansDisplay" class="value-display text-blue-600">0.000</p>
+            </div>
+            <div>
+                <p class="text-sm font-medium text-slate-600">Cosine (x):</p>
+                <p id="cosineValueDisplay" class="value-display text-red-600">1.000</p>
+            </div>
+            <div>
+                <p class="text-sm font-medium text-slate-600">Sine (y):</p>
+                <p id="sineValueDisplay" class="value-display text-green-600">0.000</p>
+            </div>
+        </div>
+         <div class="mt-4 text-center">
+            <button id="animateButton" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg shadow transition duration-150 ease-in-out">
+                Animate
+            </button>
+        </div>
+    </div>
+
+    <canvas id="unitCircleCanvas" class="rounded-lg"></canvas>
+
+    <script>
+        // Get DOM elements
+        const canvas = document.getElementById('unitCircleCanvas');
+        const ctx = canvas.getContext('2d');
+        const angleSlider = document.getElementById('angleSlider');
+        const angleValueDisplay = document.getElementById('angleValueDisplay');
+        const angleRadiansDisplay = document.getElementById('angleRadiansDisplay');
+        const cosineValueDisplay = document.getElementById('cosineValueDisplay');
+        const sineValueDisplay = document.getElementById('sineValueDisplay');
+        const animateButton = document.getElementById('animateButton');
+
+        let animationFrameId = null;
+        let isAnimating = false;
+        let currentAngleDegrees = 0;
+
+        // Canvas setup
+        let size, radius, centerX, centerY;
+
+        function setupCanvas() {
+            // Make canvas responsive
+            const containerWidth = canvas.parentElement.clientWidth * 0.9; // Use 90% of parent width
+            const maxCanvasSize = 500; // Max canvas dimension
+            const minCanvasSize = 280; // Min canvas dimension for smaller screens
+            
+            size = Math.min(maxCanvasSize, Math.max(minCanvasSize, containerWidth, window.innerHeight * 0.5));
+            canvas.width = size;
+            canvas.height = size;
+
+            radius = size * 0.35; // Radius of the unit circle
+            centerX = size / 2;
+            centerY = size / 2;
+            draw(); // Redraw when canvas is resized
+        }
+
+
+        // Function to draw everything on the canvas
+        function draw() {
+            // Get current angle from slider
+            const angleDegrees = parseFloat(angleSlider.value);
+            currentAngleDegrees = angleDegrees; // Update global current angle
+            const angleRadians = angleDegrees * (Math.PI / 180);
+
+            // Clear canvas
+            ctx.clearRect(0, 0, size, size);
+            
+            // Save context state
+            ctx.save();
+            ctx.translate(centerX, centerY); // Move origin to center
+
+            // Draw axes
+            ctx.beginPath();
+            ctx.moveTo(-size / 2 + 20, 0); // X-axis
+            ctx.lineTo(size / 2 - 20, 0);
+            ctx.moveTo(0, -size / 2 + 20); // Y-axis
+            ctx.lineTo(0, size / 2 - 20);
+            ctx.strokeStyle = '#9ca3af'; // gray-400
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            // Draw axis labels
+            ctx.fillStyle = '#6b7280'; // gray-500
+            ctx.font = `${Math.max(10, size * 0.03)}px Inter`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('X', size / 2 - 30, -15);
+            ctx.fillText('Y', 15, -size/2 + 30);
+            ctx.fillText('0', -10, 10);
+            ctx.fillText('1', radius, 15);
+            ctx.fillText('-1', -radius, 15);
+            ctx.fillText('1', -15, -radius);
+            ctx.fillText('-1', -15, radius);
+
+
+            // Draw unit circle
+            ctx.beginPath();
+            ctx.arc(0, 0, radius, 0, 2 * Math.PI);
+            ctx.strokeStyle = '#60a5fa'; // blue-400
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Calculate sine and cosine
+            const cosValue = Math.cos(angleRadians);
+            const sinValue = Math.sin(angleRadians);
+
+            // Coordinates of the point on the circle
+            const pointX = cosValue * radius;
+            const pointY = -sinValue * radius; // Negative because canvas y-axis is inverted
+
+            // Draw radius line (hypotenuse)
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(pointX, pointY);
+            ctx.strokeStyle = '#0ea5e9'; // sky-500
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Draw cosine line (adjacent)
+            ctx.beginPath();
+            ctx.moveTo(0, pointY);
+            ctx.lineTo(pointX, pointY);
+            ctx.strokeStyle = '#ef4444'; // red-500
+            ctx.lineWidth = 2;
+            ctx.setLineDash([4, 2]); // Dashed line
+            ctx.stroke();
+            if (Math.abs(cosValue) > 0.01) { // Draw only if significant
+                 ctx.fillStyle = '#ef4444';
+                 ctx.textAlign = pointX > 0 ? 'left' : 'right';
+                 ctx.fillText('cos(θ)', pointX / 2, pointY - (pointY > 0 ? 10 : -15) * (size/400) );
+            }
+
+            // Draw sine line (opposite)
+            ctx.beginPath();
+            ctx.moveTo(pointX, 0);
+            ctx.lineTo(pointX, pointY);
+            ctx.strokeStyle = '#22c55e'; // green-500
+            ctx.lineWidth = 2;
+            // ctx.setLineDash([4, 2]); // Dashed line already set
+            ctx.stroke();
+            ctx.setLineDash([]); // Reset line dash
+
+            if (Math.abs(sinValue) > 0.01) { // Draw only if significant
+                ctx.fillStyle = '#22c55e';
+                ctx.textAlign = 'center';
+                ctx.fillText('sin(θ)', pointX + (pointX > 0 ? 15: -15) * (size/400), pointY / 2);
+            }
+
+
+            // Draw the point on the circle
+            ctx.beginPath();
+            ctx.arc(pointX, pointY, Math.max(4, size * 0.01), 0, 2 * Math.PI);
+            ctx.fillStyle = '#0ea5e9'; // sky-500
+            ctx.fill();
+
+            // Draw angle arc
+            ctx.beginPath();
+            ctx.arc(0, 0, radius * 0.2, 0, -angleRadians, angleRadians > 0); // Adjust direction
+            ctx.strokeStyle = '#a3a3a3'; // neutral-400
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // Draw angle label (θ)
+            const angleLabelRadius = radius * 0.25;
+            const angleLabelX = Math.cos(-angleRadians / 2) * angleLabelRadius;
+            const angleLabelY = Math.sin(-angleRadians / 2) * angleLabelRadius;
+            ctx.fillStyle = '#525252'; // neutral-600
+            ctx.font = `${Math.max(12, size * 0.035)}px Inter`;
+            ctx.fillText('θ', angleLabelX, angleLabelY);
+
+            // Restore context state
+            ctx.restore();
+
+            // Update displayed values
+            angleValueDisplay.textContent = angleDegrees.toFixed(0);
+            angleRadiansDisplay.textContent = angleRadians.toFixed(3);
+            cosineValueDisplay.textContent = cosValue.toFixed(3);
+            sineValueDisplay.textContent = sinValue.toFixed(3);
+        }
+
+        // Animation loop
+        function animate() {
+            if (!isAnimating) return;
+
+            currentAngleDegrees = (currentAngleDegrees + 0.5) % 360; // Increment angle
+            angleSlider.value = currentAngleDegrees; // Update slider position
+            draw(); // Redraw with new angle
+            animationFrameId = requestAnimationFrame(animate);
+        }
+
+        // Event listeners
+        angleSlider.addEventListener('input', () => {
+            if (isAnimating) { // Stop animation if user interacts with slider
+                isAnimating = false;
+                animateButton.textContent = 'Animate';
+                if (animationFrameId) {
+                    cancelAnimationFrame(animationFrameId);
+                    animationFrameId = null;
+                }
+            }
+            draw();
+        });
+
+        animateButton.addEventListener('click', () => {
+            isAnimating = !isAnimating;
+            if (isAnimating) {
+                animateButton.textContent = 'Stop Animation';
+                currentAngleDegrees = parseFloat(angleSlider.value); // Start from current slider value
+                animate();
+            } else {
+                animateButton.textContent = 'Animate';
+                if (animationFrameId) {
+                    cancelAnimationFrame(animationFrameId);
+                    animationFrameId = null;
+                }
+            }
+        });
+        
+        // Mouse interaction on canvas (drag point)
+        let isDragging = false;
+
+        function getAngleFromMouse(event) {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = event.clientX - rect.left - centerX;
+            const mouseY = event.clientY - rect.top - centerY;
+            let angle = Math.atan2(-mouseY, mouseX); // Negative mouseY because canvas y is inverted
+            if (angle < 0) {
+                angle += 2 * Math.PI; // Ensure angle is in [0, 2PI]
+            }
+            return angle * (180 / Math.PI); // Convert to degrees
+        }
+
+        canvas.addEventListener('mousedown', (event) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = event.clientX - rect.left;
+            const mouseY = event.clientY - rect.top;
+
+            const angle = parseFloat(angleSlider.value);
+            const angleRad = angle * (Math.PI / 180);
+            const pointXOnCanvas = centerX + Math.cos(angleRad) * radius;
+            const pointYOnCanvas = centerY - Math.sin(angleRad) * radius;
+            
+            // Check if click is near the point on the circle
+            const distance = Math.sqrt((mouseX - pointXOnCanvas)**2 + (mouseY - pointYOnCanvas)**2);
+            if (distance < Math.max(10, size*0.03)) { // If click is close to the point
+                isDragging = true;
+                if (isAnimating) { // Stop animation if dragging
+                    isAnimating = false;
+                    animateButton.textContent = 'Animate';
+                    cancelAnimationFrame(animationFrameId);
+                    animationFrameId = null;
+                }
+                document.body.style.cursor = 'grabbing';
+            }
+        });
+
+        canvas.addEventListener('mousemove', (event) => {
+            if (isDragging) {
+                const newAngleDegrees = getAngleFromMouse(event);
+                angleSlider.value = newAngleDegrees.toFixed(0);
+                draw();
+            } else { // Add hover effect for the draggable point
+                 const rect = canvas.getBoundingClientRect();
+                const mouseX = event.clientX - rect.left;
+                const mouseY = event.clientY - rect.top;
+
+                const angle = parseFloat(angleSlider.value);
+                const angleRad = angle * (Math.PI / 180);
+                const pointXOnCanvas = centerX + Math.cos(angleRad) * radius;
+                const pointYOnCanvas = centerY - Math.sin(angleRad) * radius;
+                
+                const distance = Math.sqrt((mouseX - pointXOnCanvas)**2 + (mouseY - pointYOnCanvas)**2);
+                if (distance < Math.max(10, size*0.03)) {
+                    canvas.style.cursor = 'grab';
+                } else {
+                    canvas.style.cursor = 'default';
+                }
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                document.body.style.cursor = 'default';
+                canvas.style.cursor = 'default';
+            }
+        });
+        
+        canvas.addEventListener('mouseleave', () => { // Reset cursor if mouse leaves canvas while dragging
+            if (isDragging) {
+                isDragging = false;
+                document.body.style.cursor = 'default';
+                canvas.style.cursor = 'default';
+            }
+        });
+
+
+        // Initial setup and draw
+        window.addEventListener('resize', setupCanvas);
+        
+        // Initialize
+        setupCanvas(); // Initial canvas setup
+        draw(); // Initial draw
+    </script>
+
+</body>
+</html>
