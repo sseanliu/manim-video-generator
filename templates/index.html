@@ -5,7 +5,7 @@
     <!-- Hero Section -->
     <div class="text-center mb-16">
         <h1 class="text-4xl md:text-5xl font-bold mb-6">
-            <span class="gradient-text">Create Beautiful Mathematical Animations</span>
+            <span class="text-black">Text to Manim</span>
         </h1>
         <p class="text-xl text-gray-300 max-w-3xl mx-auto">
             Transform your mathematical concepts into stunning animations using AI and Manim.
@@ -19,11 +19,11 @@
             <form id="generationForm" class="space-y-6">
                 <!-- Text Input -->
                 <div>
-                    <label for="concept" class="block text-sm font-medium text-gray-300 mb-2">Describe Your Animation</label>
-                    <textarea id="concept" name="concept" rows="4" class="w-full px-4 py-3 bg-indigo-900 bg-opacity-50 border border-indigo-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" placeholder="Example: Visualize the relationship between sine and cosine on the unit circle..."></textarea>
+                    <label for="concept" class="block text-sm font-medium text-gray-500 mb-2">Describe Your Animation</label>
+                    <textarea id="concept" name="concept" rows="4" class="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-800 placeholder-gray-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all" placeholder="Example: Visualize the relationship between sine and cosine on the unit circle..."></textarea>
                 </div>
 
-                <!-- Example Concepts -->
+                <!-- Example Concepts
                 <div>
                     <label class="block text-sm font-medium text-gray-300 mb-2">Try These Examples</label>
                     <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
@@ -64,11 +64,11 @@
                             Differential Equations
                         </button>
                     </div>
-                </div>
+                </div> -->
 
                 <!-- Generate Button -->
                 <div class="flex justify-center">
-                    <button type="submit" class="gradient-button px-8 py-3 rounded-lg text-white font-medium text-lg shadow-lg flex items-center space-x-2">
+                    <button type="submit" class="px-8 py-3 rounded-lg text-black font-medium text-lg border border-gray-300 bg-white hover:bg-gray-100 shadow flex items-center space-x-2">
                         <span>Generate Animation</span>
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -141,58 +141,6 @@
                     <h3 class="text-lg font-medium">Error</h3>
                 </div>
                 <p class="mt-2 text-gray-300" id="errorMessage">Something went wrong. Please try again.</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Example Showcase -->
-    <div class="mt-24">
-        <h2 class="text-3xl font-bold text-center mb-12">
-            <span class="gradient-text">Example Animations</span>
-        </h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <!-- Trigonometry -->
-            <div class="glass-card rounded-xl p-6">
-                <h3 class="text-lg font-semibold mb-4">Trigonometry</h3>
-                <div class="aspect-w-16 aspect-h-9 rounded-lg overflow-hidden mb-4 bg-indigo-900 bg-opacity-50">
-                    <div class="flex items-center justify-center">
-                        <img src="{{ url_for('static', filename='gifs/differential_equations.gif') }}" alt="Trigonometry" class="w-full h-full object-contain">
-                    </div>
-                </div>
-                <p class="text-gray-300">Visualization of sine and cosine functions on the unit circle with animated angle.</p>
-            </div>
-
-            <!-- Calculus -->
-            <div class="glass-card rounded-xl p-6">
-                <h3 class="text-lg font-semibold mb-4">3D Surface Plot</h3>
-                <div class="aspect-w-16 aspect-h-9 rounded-lg overflow-hidden mb-4 bg-indigo-900 bg-opacity-50">
-                    <div class="flex items-center justify-center">
-                        <img src="{{ url_for('static', filename='gifs/3d_calculus.gif') }}" alt="3d Surface Plot" class="w-full h-full object-contain">
-                    </div>
-                </div>
-                <p class="text-gray-300">3D visualization of the surface area of a cube with animations.</p>
-            </div>
-
-            <!-- Complex Numbers -->
-            <div class="glass-card rounded-xl p-6">
-                <h3 class="text-lg font-semibold mb-4">Complex Numbers</h3>
-                <div class="aspect-w-16 aspect-h-9 rounded-lg overflow-hidden mb-4 bg-indigo-900 bg-opacity-50">
-                    <div class="flex items-center justify-center">
-                        <img src="{{ url_for('static', filename='gifs/ComplexNumbersAnimation_ManimCE_v0.17.3.gif') }}" alt="Complex Numbers" class="w-full h-full object-contain">
-                    </div>
-                </div>
-                <p class="text-gray-300">Geometric interpretation of complex number operations with rotation and scaling.</p>
-            </div>
-
-            <!-- Linear Algebra -->
-            <div class="glass-card rounded-xl p-6">
-                <h3 class="text-lg font-semibold mb-4">Linear Algebra</h3>
-                <div class="aspect-w-16 aspect-h-9 rounded-lg overflow-hidden mb-4 bg-indigo-900 bg-opacity-50">
-                    <div class="flex items-center justify-center">
-                        <img src="{{ url_for('static', filename='gifs/TrigonometryAnimation_ManimCE_v0.17.3.gif') }}" alt="Differetial Equations" class="w-full h-full object-contain">
-                    </div>
-                </div>
-                <p class="text-gray-300">Differential equations to life by visualizing solution curves and phase spaces.</p>
             </div>
         </div>
     </div>
