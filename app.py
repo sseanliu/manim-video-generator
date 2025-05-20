@@ -30,7 +30,7 @@ try:
         gemini_model_manim = genai.GenerativeModel('gemini-2.5-flash-preview-04-17')
         logging.info("Google AI SDK configured for Manim generation with gemini-2.5-flash-preview-04-17.")
     else:
-        logging.warning("GOOGLE_API_KEY not found. Manim AI generation will fall back to basic code.")
+        logging.warning("GOOGLE_API_KEY not found. Manim AI generation disabled.")
 except Exception as e:
     logging.error(f"Failed to initialize Google AI SDK for Manim generation: {e}")
 
@@ -175,9 +175,8 @@ def generate_manim_code(concept):
 
     Returns ``None`` if code generation fails."""
     if not gemini_model_manim:
-        app.logger.error(
-            "Gemini Manim model not initialized. Skipping video generation.")
-        return None
+      app.logger.error("Gemini Manim model not initialized. Skipping video generation.")
+      return None
 
     prompt = generate_manim_prompt(concept) # Your existing detailed prompt for Manim
     app.logger.info("Attempting to generate Manim code via Gemini for concept: %s", concept)
@@ -205,14 +204,15 @@ def generate_manim_code(concept):
             manim_code = manim_code[:-len("```")].strip()
         
         if not ("class MainScene(Scene):" in manim_code or "class MainScene(ThreeDScene):" in manim_code):
-          app.logger.error("Gemini generated Manim code for '%s' does not appear valid (missing MainScene).", concept)
-          return None
-    
+        app.logger.error("Gemini generated Manim code for '%s' does not appear valid (missing MainScene).", concept)
+        return None
+
         app.logger.info("Gemini AI Manim code for '%s' generated successfully.", concept)
         return manim_code
-    except Exception as e:
+        except Exception as e:
         app.logger.error("Error during Gemini AI Manim code generation for '%s': %s", concept, str(e))
         return None
+
 
 def select_template(concept):
     app.logger.info("Defaulting to AI (Gemini) Manim code generation for %r", concept)
@@ -999,8 +999,9 @@ def generate_video(concept, temp_dir):
         try:
             manim_code = select_template(concept.lower())
         except Exception as template_error:
-            logger.error('Template selection error: %s', str(template_error))
-            return None
+        logger.error('Template selection error: %s', str(template_error))
+        return None
+
         
         if not manim_code:
             return None
