@@ -1,4 +1,4 @@
-#!/Users/rohitghumare/CascadeProjects/manim-video-generator/venv/bin/python3.11
+#!/Users/xiaoanliu/Documents/Github/manim-video-generator/venv/bin/python3.13
 
 """Play subtitles with correct timing to stdout."""
 

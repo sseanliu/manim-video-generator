@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sine and Cosine on Unit Circle</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Prevent scrollbars if canvas overfills slightly */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh; /* Ensure body takes at least full viewport height initially */
+            background-color: #f0f0f0;
+        }
+        .canvas-container {
+            width: 100%;
+            max-width: 600px; /* Example max width */
+            position: relative; /* Needed for potential absolute positioning inside */
+            box-sizing: border-box; /* Include padding/border in element's total width and height */
+            padding: 10px; /* Add some padding around the canvas */
+        }
+        canvas {
+            display: block;
+            width: 100%; /* Make canvas fill its container width */
+            height: auto; /* Maintain aspect ratio */
+            max-width: 100%;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+        }
+        #angleDisplay {
+            position: absolute;
+            top: 20px; /* Adjust position as needed */
+            left: 20px; /* Adjust position as needed */
+            font-family: sans-serif;
+            font-size: 1em;
+            color: #333;
+            z-index: 10; /* Ensure it's above the canvas */
+        }
+    </style>
+</head>
+<body>
+    <div class="canvas-container">
+        <div id="angleDisplay">Angle: 0°</div>
+        <canvas id="interactiveCanvas"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('interactiveCanvas');
+        const ctx = canvas.getContext('2d');
+        const angleDisplay = document.getElementById('angleDisplay');
+
+        let centerX, centerY, radius;
+        let angleRadians = 0; // Start at 0 radians (positive x-axis)
+        let isDragging = false;
+        const pointRadius = 8; // Radius of the draggable point
+
+        // Function to resize the canvas based on its CSS size
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            // Set canvas dimensions to match the container's client dimensions
+            canvas.width = container.clientWidth - 20; // Account for container padding
+            canvas.height = container.clientWidth - 20; // Make it square based on width
+
+            // Recalculate drawing parameters
+            centerX = canvas.width / 2;
+            centerY = canvas.height / 2;
+            radius = Math.min(centerX, centerY) * 0.8; // Use 80% of the smaller half-dimension
+        }
+
+        // Function to draw the visualization
+        function draw() {
+            if (!ctx) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw axes
+            ctx.strokeStyle = '#aaa';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(0, centerY);
+            ctx.lineTo(canvas.width, centerY); // X-axis
+            ctx.moveTo(centerX, 0);
+            ctx.lineTo(centerX, canvas.height); // Y-axis
+            ctx.stroke();
+
+            // Draw unit circle
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Draw angle line from center to point on circle
+            const pointX = centerX + radius * Math.cos(angleRadians);
+            const pointY = centerY - radius * Math.sin(angleRadians); // Y-axis is inverted in canvas
+
+            ctx.strokeStyle = '#f00';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.lineTo(pointX, pointY);
+            ctx.stroke();
+
+            // Draw point on the circle
+            ctx.fillStyle = '#00f';
+            ctx.beginPath();
+            ctx.arc(pointX, pointY, pointRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Draw sine (y-coordinate) line
+            ctx.strokeStyle = '#0f0';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(pointX, pointY);
+            ctx.lineTo(pointX, centerY); // Vertical line to X-axis
+            ctx.stroke();
+
+            // Draw cosine (x-coordinate) line
+            ctx.strokeStyle = '#00f';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(pointX, pointY);
+            ctx.lineTo(centerX, pointY); // Horizontal line to Y-axis
+            ctx.stroke();
+
+            // Add labels for sine and cosine
+            ctx.fillStyle = '#333';
+            ctx.font = '14px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            // Cosine label (near the x-axis projection)
+            ctx.fillText('cos(θ)', (pointX + centerX) / 2, centerY + 15);
+
+            // Sine label (near the y-axis projection)
+            ctx.fillText('sin(θ)', centerX - 20, (pointY + centerY) / 2);
+
+
+            // Update angle display
+            const angleDegrees = (angleRadians * 180 / Math.PI).toFixed(1);
+            angleDisplay.textContent = `Angle: ${angleDegrees}°`;
+
+            // Call sendHeightToParent after drawing is complete
+            sendHeightToParent();
+        }
+
+        // Setup function to resize and draw
+        function setupCanvasAndDraw() {
+            resizeCanvas();
+            draw();
+        }
+
+        // Helper to get mouse position relative to the canvas
+        function getMousePos(event) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: event.clientX - rect.left,
+                y: event.clientY - rect.top
+            };
+        }
+
+        // Event listeners for dragging
+        canvas.addEventListener('mousedown', (event) => {
+            const mousePos = getMousePos(event);
+            const pointX = centerX + radius * Math.cos(angleRadians);
+            const pointY = centerY - radius * Math.sin(angleRadians);
+            const dist = Math.sqrt((mousePos.x - pointX) ** 2 + (mousePos.y - pointY) ** 2);
+
+            if (dist < pointRadius * 2) { // Check if click is near the point
+                isDragging = true;
+                canvas.style.cursor = 'grabbing';
+            }
+        });
+
+        canvas.addEventListener('mousemove', (event) => {
+            if (!isDragging) return;
+
+            const mousePos = getMousePos(event);
+            // Calculate angle based on mouse position relative to center
+            const deltaX = mousePos.x - centerX;
+            const deltaY = centerY - mousePos.y; // Remember canvas Y is inverted
+
+            angleRadians = Math.atan2(deltaY, deltaX); // atan2 handles all quadrants
+
+            // Ensure angle is positive (0 to 2*PI)
+            if (angleRadians < 0) {
+                angleRadians += 2 * Math.PI;
+            }
+
+            draw(); // Redraw with the new angle
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            isDragging = false;
+            canvas.style.cursor = 'grab';
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+             isDragging = false;
+             canvas.style.cursor = 'default';
+        });
+
+        // Initial cursor style
+        canvas.style.cursor = 'grab';
+
+
+        // Provided sendHeightToParent function
+        function sendHeightToParent() {
+            let pageHeight = 0;
+            if (document.body) { pageHeight = Math.max(document.body.scrollHeight, document.body.offsetHeight); }
+            if (document.documentElement) { pageHeight = Math.max(pageHeight, document.documentElement.scrollHeight, document.documentElement.offsetHeight, document.documentElement.clientHeight); }
+            const finalHeight = pageHeight + 30; // Buffer
+            if (window.parent && typeof window.parent.postMessage === 'function') { window.parent.postMessage({ type: 'resize-iframe', height: finalHeight }, '*'); }
+        }
+
+        // Event listeners for setup and resize
+        window.addEventListener('load', () => {
+            setupCanvasAndDraw();
+            sendHeightToParent(); // Ensure height is sent after initial draw
+        });
+
+        window.addEventListener('resize', () => {
+            setupCanvasAndDraw(); // This calls draw, which calls sendHeightToParent
+        });
+
+        // Initial setup call in case load event is missed or for immediate execution
+        // setupCanvasAndDraw(); // Removed this to rely solely on load event as per typical practice. Load event will call it.
+
+    </script>
+</body>
+</html>
