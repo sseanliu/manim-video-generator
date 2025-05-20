@@ -378,6 +378,36 @@
         // Initialize
         setupCanvas(); // Initial canvas setup
         draw(); // Initial draw
+
+        // Function to send height to parent
+        function sendHeightToParent() {
+            const height = document.body.scrollHeight;
+            if (window.parent) {
+                window.parent.postMessage({
+                    type: 'resize-iframe',
+                    height: height
+                }, '*'); // Consider a more specific target origin in production
+            }
+        }
+
+        // Send height after initial draw and on resize
+        window.addEventListener('load', sendHeightToParent);
+        window.addEventListener('resize', sendHeightToParent);
+
+        // Also send height after canvas setup and draw as content might change
+        const originalSetupCanvas = setupCanvas;
+        setupCanvas = function() {
+            originalSetupCanvas();
+            sendHeightToParent();
+        }
+
+        const originalDraw = draw;
+        draw = function() {
+            originalDraw();
+            sendHeightToParent(); // Send height after drawing as well
+        }
+
+        // If there are other dynamic content changes, call sendHeightToParent() after them.
     </script>
 
 </body>

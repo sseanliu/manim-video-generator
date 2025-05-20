@@ -7,22 +7,41 @@ import uuid
 import shutil
 import json
 from manim import *
-import openai
+import google.generativeai as genai # Import Google AI SDK
 from dotenv import load_dotenv
 from datetime import datetime
 import time
 import random
 import io
+from html_generator import HTMLGenerator # This now uses Google AI
 
-# Load environment variables
+# Load environment variables (will load GOOGLE_API_KEY if present)
 load_dotenv()
+
+# Initialize Google AI client for Manim code generation in app.py
+gemini_model_manim = None
+try:
+    google_api_key = os.getenv("GOOGLE_API_KEY")
+    if google_api_key:
+        # Configure the SDK. It's safe to call this even if html_generator also calls it.
+        genai.configure(api_key=google_api_key)
+
+        # Using gemini-2.5-flash-preview-04-17. Adjust if needed.
+        gemini_model_manim = genai.GenerativeModel('gemini-2.5-flash-preview-04-17')
+        logging.info("Google AI SDK configured for Manim generation with gemini-2.5-flash-preview-04-17.")
+    else:
+        logging.warning("GOOGLE_API_KEY not found. Manim AI generation will fall back to basic code.")
+except Exception as e:
+    logging.error(f"Failed to initialize Google AI SDK for Manim generation: {e}")
 
 # Initialize Flask app
 app = Flask(__name__, 
     static_url_path='/static',
     static_folder='static')
+app.logger.setLevel(logging.INFO) # Use Flask's logger for consistency
 
-app.logger.setLevel(logging.INFO)
+# Initialize HTML Generator (which also initializes its own Google AI client)
+html_generator = HTMLGenerator(app)
 
 # Configure Manim
 config.media_dir = "media"
@@ -63,9 +82,6 @@ os.makedirs(os.path.join(app.root_path, 'static', 'videos'), exist_ok=True)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize OpenAI client
-openai.api_key = os.getenv('OPENAI_API_KEY')
-
 # Set media and temporary directories with fallback to local paths
 if os.environ.get('DOCKER_ENV'):
     app.config['MEDIA_DIR'] = os.getenv('MEDIA_DIR', '/app/media')
@@ -92,153 +108,111 @@ def sanitize_title(text):
 
 def generate_manim_prompt(concept):
     """Generate a detailed prompt for GPT to create Manim code"""
-    return f"""Create a detailed Manim animation to demonstrate and explain: {concept}
+    return f"""Create a detailed Manim animation to demonstrate and explain: {concept}.
 
 Create a Scene class named MainScene that follows these requirements:
 
 1. Scene Setup:
-   - For 3D concepts: Use ThreeDScene with appropriate camera angles
-   - For 2D concepts: Use Scene with NumberPlane when relevant
-   - Add title and clear mathematical labels
+   - For 2D concepts like unit circles, use Scene with NumberPlane if axes are needed. When initializing `NumberPlane` or `Axes`, only use documented parameters. Avoid parameters like `background_rectangle` unless you are certain of its validity for the Manim version.
+   - Add a clear title.
+   - **Initial State for Animated Mobjects**: When mobjects are animated using `ValueTracker` and updaters, ensure their initial creation uses valid, non-degenerate geometry based on the `ValueTracker`'s initial value. A dot on a circle should be at its initial angle, and a radius line drawn to that dot *before* these are used in other mobjects.
 
-2. Mathematical Elements:
-   - Use MathTex for equations with proper LaTeX syntax
-   - Include step-by-step derivations when showing formulas
-   - Add mathematical annotations and explanations
-   - Show key points and important relationships
+2. Visualizing Angles (especially on Unit Circle):
+   - To show the angle `theta` itself (the arc), prefer using `Arc(radius=..., start_angle=0, angle=tracker.get_value(), ...)` where `tracker` is a `ValueTracker` for the angle in radians. Add an updater to this Arc to change its `angle` parameter based on the tracker.
+   - A `Line` mobject can represent the radius, updated to follow a `Dot` that moves on the circle based on the `tracker`.
+   - Labels like `cos(theta)`, `sin(theta)`, and `theta` should be `MathTex` and updated to stay in appropriate positions relative to the changing lines and arc.
 
-3. Visual Elements:
-   - Create clear geometric shapes and diagrams
-   - Use color coding to highlight important parts
-   - Add arrows or lines to show relationships
-   - Include coordinate axes when relevant
+3. Code Structure:
+   - Start with `from manim import *`.
+   - Define `class MainScene(Scene):` with a `construct(self):` method.
+   - Use `ValueTracker` for angle animations (e.g., `angle_tracker = ValueTracker(0)` for radians).
+   - Use updaters (`.add_updater(...)` or `always_redraw(...)`) for mobjects that change based on the `ValueTracker`.
+   - Animate the `ValueTracker` using `self.play(angle_tracker.animate.set_value(...))`.
+   - **Fading Out All Mobjects**: If you want to fade out all mobjects at the end of a scene, use `self.play(FadeOut(*self.mobjects))` to correctly unpack the list of mobjects.
 
-4. Animation Flow:
-   - Break down complex concepts into simple steps
-   - Use smooth transitions between steps
-   - Add pauses (self.wait()) at key moments
-   - Use transform animations to show changes
-
-5. Specific Requirements:
-   - For equations: Show step-by-step solutions
-   - For theorems: Visualize proof steps
-   - For geometry: Show construction process
-   - For 3D: Include multiple camera angles
-   - For graphs: Show coordinate system and gridlines
-
-6. Code Structure:
-   - Import required Manim modules
-   - Use proper class inheritance
-   - Define clear animation sequences
-   - Include helpful comments
-
-Example structure:
+Example of Unit Circle Angle Animation (using Arc for the angle sweep):
 ```python
 from manim import *
 
-class MainScene(Scene):  # or ThreeDScene for 3D
+class MainScene(Scene):
     def construct(self):
-        # 1. Setup and introduction
-        title = Title("Concept Name")
-        
-        # 2. Create mathematical objects
-        equation = MathTex(r"your_equation")
-        
-        # 3. Create geometric objects
-        shapes = VGroup(...)
-        
-        # 4. Add annotations
-        labels = VGroup(...)
-        
-        # 5. Animate step by step
+        title = Title("Unit Circle Angle")
         self.play(Write(title))
-        self.play(Create(shapes))
-        
-        # 6. Show relationships
-        self.play(Transform(...))
-        
-        # 7. Conclude
+
+        plane = NumberPlane(
+            x_range=[-2, 2, 1],
+            y_range=[-2, 2, 1],
+            # axis_config={"include_numbers": True} # Example of a valid config
+        )
+        self.add(plane)
+
+        circle = Circle(radius=1)
+        dot = Dot(color=RED)
+        radius_line = Line(ORIGIN, dot.get_center(), color=BLUE)
+        angle_arc_radius = 0.3
+        angle_display = Arc(radius=angle_arc_radius, start_angle=0, angle=0, color=ORANGE) # Initial angle is 0
+
+        angle_tracker = ValueTracker(0) # Angle in radians
+
+        dot.move_to(circle.point_at_angle(angle_tracker.get_value()))
+        radius_line.put_start_and_end_on(ORIGIN, dot.get_center())
+        self.add(circle, dot, radius_line, angle_display)
+
+        dot.add_updater(lambda m: m.move_to(circle.point_at_angle(angle_tracker.get_value())))
+        radius_line.add_updater(lambda m: m.put_start_and_end_on(ORIGIN, dot.get_center()))
+        angle_display.add_updater(lambda m: m.become(Arc(radius=angle_arc_radius, start_angle=0, angle=angle_tracker.get_value(), color=ORANGE)))
+
+        self.play(angle_tracker.animate.set_value(2 * PI), run_time=5)
         self.wait()
+        # self.play(FadeOut(*self.mobjects)) # Example of fading all
 ```
 
-Only output valid Manim Python code without any additional text or markdown."""
+Output ONLY valid Manim Python code for a single class `MainScene`. Do not include any explanations or markdown like ```python ... ```. The response must start with `from manim import *`.
+"""
+
+def generate_manim_code(concept):
+    """Generate Manim code based on the concept using Gemini AI."""
+    if not gemini_model_manim:
+        app.logger.error("Gemini Manim model not initialized. Falling back to basic code.")
+        return generate_basic_visualization_code()
+
+    prompt = generate_manim_prompt(concept) # Your existing detailed prompt for Manim
+    app.logger.info(f"Attempting to generate Manim code via Gemini for concept: {concept}")
+    try:
+        generation_config = genai.types.GenerationConfig(
+            candidate_count=1,
+            temperature=0.2 # Low temperature for precision in Manim code
+        )
+        response = gemini_model_manim.generate_content(
+            prompt,
+            generation_config=generation_config
+        )
+        
+        if not response.candidates or not response.candidates[0].content.parts:
+            app.logger.error(f"Gemini Manim code generation for '{concept}' returned no content or parts.")
+            raise ValueError("No content from Gemini model for Manim")
+
+        manim_code = response.candidates[0].content.parts[0].text.strip()
+
+        # Clean up potential markdown fences (though prompt asks not to use them)
+        if manim_code.startswith("```python"):
+            manim_code = manim_code[len("```python"):].strip()
+        if manim_code.endswith("```"):
+            manim_code = manim_code[:-len("```")].strip()
+        
+        if not ("class MainScene(Scene):" in manim_code or "class MainScene(ThreeDScene):" in manim_code):
+            app.logger.error(f"Gemini generated Manim code for '{concept}' does not appear valid (missing MainScene). Fallback. Received: {manim_code[:300]}")
+            return generate_basic_visualization_code()
+
+        app.logger.info(f"Gemini AI Manim code for '{concept}' generated successfully.")
+        return manim_code
+    except Exception as e:
+        app.logger.error(f"Error during Gemini AI Manim code generation for '{concept}': {str(e)}")
+        return generate_basic_visualization_code()
 
 def select_template(concept):
-    """Select appropriate template based on the concept."""
-    concept = concept.lower().strip()
-    
-    # Define template mappings with keywords
-    template_mappings = {
-        'pythagorean': {
-            'keywords': ['pythagoras', 'pythagorean', 'right triangle', 'hypotenuse'],
-            'generator': generate_pythagorean_code
-        },
-        'quadratic': {
-            'keywords': ['quadratic', 'parabola', 'x squared', 'x^2'],
-            'generator': generate_quadratic_code
-        },
-        'trigonometry': {
-            'keywords': ['sine', 'cosine', 'trigonometry', 'trig', 'unit circle'],
-            'generator': generate_trig_code
-        },
-        '3d_surface': {
-            'keywords': ['3d surface', 'surface plot', '3d plot', 'three dimensional'],
-            'generator': generate_3d_surface_code
-        },
-        'sphere': {
-            'keywords': ['sphere', 'ball', 'spherical'],
-            'generator': generate_sphere_code
-        },
-        'cube': {
-            'keywords': ['cube', 'cubic', 'box'],
-            'generator': generate_cube_code
-        },
-        'derivative': {
-            'keywords': ['derivative', 'differentiation', 'slope', 'rate of change'],
-            'generator': generate_derivative_code
-        },
-        'integral': {
-            'keywords': ['integration', 'integral', 'area under curve', 'antiderivative'],
-            'generator': generate_integral_code
-        },
-        'matrix': {
-            'keywords': ['matrix', 'matrices', 'linear transformation'],
-            'generator': generate_matrix_code
-        },
-        'eigenvalue': {
-            'keywords': ['eigenvalue', 'eigenvector', 'characteristic'],
-            'generator': generate_eigenvalue_code
-        },
-        'complex': {
-            'keywords': ['complex', 'imaginary', 'complex plane'],
-            'generator': generate_complex_code
-        },
-        'differential_equation': {
-            'keywords': ['differential equation', 'ode', 'pde'],
-            'generator': generate_diff_eq_code
-        }
-    }
-    
-    # Find best matching template
-    best_match = None
-    max_matches = 0
-    
-    for template_name, template_info in template_mappings.items():
-        matches = sum(1 for keyword in template_info['keywords'] if keyword in concept)
-        if matches > max_matches:
-            max_matches = matches
-            best_match = template_info['generator']
-    
-    # Return best matching template or fallback to basic visualization
-    if best_match and max_matches > 0:
-        try:
-            return best_match()
-        except Exception as e:
-            logger.error(f"Error generating template {best_match.__name__}: {str(e)}")
-            return generate_basic_visualization_code()
-    
-    # Default to basic visualization if no good match found
-    return generate_basic_visualization_code()
+    app.logger.info(f"Defaulting to AI (Gemini) Manim code generation for '{concept}'")
+    return generate_manim_code(concept)
 
 def generate_pythagorean_code():
     return '''from manim import *
@@ -945,15 +919,6 @@ class MainScene(ThreeDScene):
         self.stop_ambient_camera_rotation()
         self.wait()'''
 
-def generate_manim_code(concept):
-    """Generate Manim code based on the concept."""
-    try:
-        # First try to find a matching template
-        return select_template(concept.lower())
-    except Exception as e:
-        app.logger.error(f"Error generating Manim code: {str(e)}")
-        return generate_basic_visualization_code()
-
 def generate_basic_visualization_code():
     """Generate code for basic visualization."""
     return '''from manim import *
@@ -1013,18 +978,9 @@ class MainScene(Scene):
         self.wait()
 '''
 
-@app.route('/')
-def index():
-    """Serve the main page."""
-    return render_template('index.html')
-
-@app.route('/generate', methods=['POST'])
-def generate():
+def generate_video(concept, temp_dir):
+    """Generate a video visualization for the given concept"""
     try:
-        concept = request.json.get('concept', '')
-        if not concept:
-            return jsonify({'error': 'No concept provided'}), 400
-            
         concept = sanitize_input(concept)
         
         # Generate unique filename
@@ -1032,102 +988,137 @@ def generate():
         random_str = ''.join(random.choices('abcdefghijklmnopqrstuvwxyz', k=6))
         filename = f'scene_{timestamp}_{random_str}'
         
-        # Create temporary directory for this generation
-        temp_dir = os.path.join(app.config['TEMP_DIR'], filename)
+        # Get appropriate template code
+        try:
+            manim_code = select_template(concept.lower())
+        except Exception as template_error:
+            logger.error(f'Template selection error: {str(template_error)}')
+            # Fallback to basic visualization if template selection fails
+            manim_code = generate_basic_visualization_code()
+        
+        if not manim_code:
+            return None
+        
+        # Write code to temporary file
+        code_file = os.path.join(temp_dir, 'scene.py')
+        with open(code_file, 'w') as f:
+            f.write(manim_code)
+        
+        app.logger.info(f"--- AI Generated Manim Code ---\n{manim_code}\n-------------------------------")
+
+        # Create media directory
+        media_dir = os.path.join(temp_dir, 'media')
+        os.makedirs(media_dir, exist_ok=True)
+        
+        # Run manim command with error handling
+        output_file = os.path.join(app.static_folder, 'videos', f'{filename}.mp4')
+        command = [
+            'manim',
+            'render',
+            '-qm',  # medium quality
+            '--format', 'mp4',
+            '--media_dir', media_dir,
+            code_file,
+            'MainScene'
+        ]
+        
+        result = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            cwd=temp_dir,
+            timeout=300  # 5 minute timeout
+        )
+        
+        if result.returncode != 0:
+            error_msg = result.stderr if result.stderr else 'Unknown error during animation generation'
+            logger.error(f'Manim error: {error_msg}')
+            return None
+        
+        # Look for the video file in multiple possible locations
+        possible_paths = [
+            os.path.join(media_dir, 'videos', 'scene', '1080p60', 'MainScene.mp4'),
+            os.path.join(media_dir, 'videos', 'scene', '720p30', 'MainScene.mp4'),
+            os.path.join(media_dir, 'videos', 'MainScene.mp4'),
+            os.path.join(temp_dir, 'MainScene.mp4')
+        ]
+        
+        video_found = False
+        for source_path in possible_paths:
+            if os.path.exists(source_path):
+                shutil.move(source_path, output_file)
+                video_found = True
+                break
+        
+        if not video_found:
+            logger.error(f'Video not found in any of these locations: {possible_paths}')
+            return None
+        
+        # Always try to generate HTML visualization if a template exists
+        try:
+            html_template = html_generator.generate_visualization(concept)
+            html_url = html_generator.get_template_url(html_template)
+        except Exception as e:
+            app.logger.error(f"Error generating HTML visualization: {str(e)}")
+            html_url = None
+        
+        return {
+            'success': True,
+            'video_url': url_for('static', filename=f'videos/{filename}.mp4'),
+            'code': manim_code,
+            'html_url': html_url
+        }
+        
+    except subprocess.TimeoutExpired:
+        logger.error('Animation generation timed out')
+        return None
+    except Exception as e:
+        logger.error(f'Error in generate_video: {str(e)}')
+        return None
+
+@app.route('/')
+def index():
+    """Serve the main page."""
+    return render_template('index.html')
+
+@app.route('/visualization/<template_name>')
+def serve_visualization(template_name):
+    """Serve an HTML visualization"""
+    return render_template(template_name)
+
+@app.route('/generate', methods=['POST'])
+def generate():
+    try:
+        data = request.get_json()
+        concept = data.get('concept', '')
+        
+        if not concept:
+            return jsonify({'error': 'No concept provided'}), 400
+            
+        # Generate unique ID for this request
+        request_id = str(uuid.uuid4())
+        
+        # Create temporary directory for this request
+        temp_dir = os.path.join(app.config['TEMP_DIR'], request_id)
         os.makedirs(temp_dir, exist_ok=True)
         
-        try:
-            # Get appropriate template code
-            try:
-                manim_code = select_template(concept.lower())
-            except Exception as template_error:
-                logger.error(f'Template selection error: {str(template_error)}')
-                # Fallback to basic visualization if template selection fails
-                manim_code = generate_basic_visualization_code()
-            
-            if not manim_code:
-                return jsonify({'error': 'Failed to generate code template'}), 500
-            
-            # Write code to temporary file
-            code_file = os.path.join(temp_dir, 'scene.py')
-            with open(code_file, 'w') as f:
-                f.write(manim_code)
-            
-            # Create media directory
-            media_dir = os.path.join(temp_dir, 'media')
-            os.makedirs(media_dir, exist_ok=True)
-            
-            # Run manim command with error handling
-            output_file = os.path.join(app.static_folder, 'videos', f'{filename}.mp4')
-            command = [
-                'manim',
-                'render',
-                '-qm',  # medium quality
-                '--format', 'mp4',
-                '--media_dir', media_dir,
-                code_file,
-                'MainScene'
-            ]
-            
-            try:
-                result = subprocess.run(
-                    command,
-                    capture_output=True,
-                    text=True,
-                    cwd=temp_dir,
-                    timeout=300  # 5 minute timeout
-                )
-                
-                if result.returncode != 0:
-                    error_msg = result.stderr if result.stderr else 'Unknown error during animation generation'
-                    logger.error(f'Manim error: {error_msg}')
-                    return jsonify({
-                        'error': 'Failed to generate animation',
-                        'details': error_msg
-                    }), 500
-                
-                # Look for the video file in multiple possible locations
-                possible_paths = [
-                    os.path.join(media_dir, 'videos', 'scene', '1080p60', 'MainScene.mp4'),
-                    os.path.join(media_dir, 'videos', 'scene', '720p30', 'MainScene.mp4'),
-                    os.path.join(media_dir, 'videos', 'MainScene.mp4'),
-                    os.path.join(temp_dir, 'MainScene.mp4')
-                ]
-                
-                video_found = False
-                for source_path in possible_paths:
-                    if os.path.exists(source_path):
-                        shutil.move(source_path, output_file)
-                        video_found = True
-                        break
-                
-                if not video_found:
-                    logger.error(f'Video not found in any of these locations: {possible_paths}')
-                    return jsonify({'error': 'Generated video file not found'}), 500
-                
-                # Return success response
-                return jsonify({
-                    'success': True,
-                    'video_url': url_for('static', filename=f'videos/{filename}.mp4'),
-                    'code': manim_code
-                })
-                
-            except subprocess.TimeoutExpired:
-                return jsonify({
-                    'error': 'Animation generation timed out',
-                    'details': 'The animation took too long to generate. Please try a simpler concept.'
-                }), 500
-                
-        finally:
-            # Cleanup temporary directory
-            shutil.rmtree(temp_dir, ignore_errors=True)
-            
+        # Generate both video and HTML visualization
+        video_result = generate_video(concept, temp_dir)
+        
+        # Clean up temporary directory
+        shutil.rmtree(temp_dir, ignore_errors=True)
+        
+        # Return both video and HTML URLs
+        response = {
+            'video_url': video_result['video_url'] if video_result else None,
+            'html_url': video_result['html_url'] if video_result else None
+        }
+        
+        return jsonify(response)
+        
     except Exception as e:
-        logger.error(f'Error generating animation: {str(e)}')
-        return jsonify({
-            'error': 'Internal server error',
-            'details': str(e)
-        }), 500
+        app.logger.error(f"Error in generate endpoint: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/static/videos/<path:filename>')
 def serve_video(filename):

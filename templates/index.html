@@ -1,220 +1,151 @@
-{% extends "base.html" %}
-
-{% block content %}
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-    <!-- Hero Section -->
-    <div class="text-center mb-16">
-        <h1 class="text-4xl md:text-5xl font-bold mb-6">
-            <span class="text-black">Text to Manim</span>
-        </h1>
-        <p class="text-xl text-gray-300 max-w-3xl mx-auto">
-            Transform your mathematical concepts into stunning animations using AI and Manim.
-            Just describe what you want to visualize, and we'll generate the code and animation for you.
-        </p>
-    </div>
-
-    <!-- Main Input Form -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manim Video Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .visualization-container {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            position: relative;
+        }
+        .visualization-container iframe {
+            width: 100%;
+            height: 500px;
+            border: none;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen p-4">
     <div class="max-w-4xl mx-auto">
-        <div class="glass-card rounded-xl p-6 mb-8">
-            <form id="generationForm" class="space-y-6">
-                <!-- Text Input -->
+        <h1 class="text-3xl font-bold text-center text-slate-800 mb-8">Manim Video Generator</h1>
+        
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <form id="generateForm" class="space-y-4">
                 <div>
-                    <label for="concept" class="block text-sm font-medium text-gray-500 mb-2">Describe Your Animation</label>
-                    <textarea id="concept" name="concept" rows="4" class="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-800 placeholder-gray-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all" placeholder="Example: Visualize the relationship between sine and cosine on the unit circle..."></textarea>
+                    <label for="concept" class="block text-sm font-medium text-slate-700 mb-1">Enter your concept:</label>
+                    <textarea 
+                        id="concept" 
+                        name="concept" 
+                        rows="3" 
+                        class="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Example: Visualize the relationship between sine and cosine on the unit circle..."
+                    ></textarea>
                 </div>
-
-                <!-- Example Concepts
-                <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Try These Examples</label>
-                    <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
-                        <button type="button" onclick="setExample('Demonstrate the Pythagorean theorem with animated triangle and squares')" class="px-3 py-2 text-sm bg-indigo-900 bg-opacity-50 hover:bg-opacity-75 rounded-lg text-white transition-all">
-                            Pythagorean Theorem
-                        </button>
-                        <button type="button" onclick="setExample('Visualize a quadratic function and its properties with animation')" class="px-3 py-2 text-sm bg-indigo-900 bg-opacity-50 hover:bg-opacity-75 rounded-lg text-white transition-all">
-                            Quadratic Function
-                        </button>
-                        <button type="button" onclick="setExample('Show how sine and cosine are related on the unit circle with animated angle')" class="px-3 py-2 text-sm bg-indigo-900 bg-opacity-50 hover:bg-opacity-75 rounded-lg text-white transition-all">
-                            Trigonometry
-                        </button>
-                        <button type="button" onclick="setExample('Create a 3D surface plot showing z = x^2 + y^2')" class="px-3 py-2 text-sm bg-indigo-900 bg-opacity-50 hover:bg-opacity-75 rounded-lg text-white transition-all">
-                            3D Surface Plot
-                        </button>
-                        <button type="button" onclick="setExample('Calculate and visualize the volume of a sphere with radius r')" class="px-3 py-2 text-sm bg-indigo-900 bg-opacity-50 hover:bg-opacity-75 rounded-lg text-white transition-all">
-                            Sphere Volume
-                        </button>
-                        <button type="button" onclick="setExample('Show how to find the surface area of a cube with animations')" class="px-3 py-2 text-sm bg-indigo-900 bg-opacity-50 hover:bg-opacity-75 rounded-lg text-white transition-all">
-                            Cube Surface Area
-                        </button>
-                        <button type="button" onclick="setExample('Visualize derivatives as the slope of a tangent line')" class="px-3 py-2 text-sm bg-indigo-900 bg-opacity-50 hover:bg-opacity-75 rounded-lg text-white transition-all">
-                            Derivatives
-                        </button>
-                        <button type="button" onclick="setExample('Show how integration works with animated area under a curve')" class="px-3 py-2 text-sm bg-indigo-900 bg-opacity-50 hover:bg-opacity-75 rounded-lg text-white transition-all">
-                            Integration
-                        </button>
-                        <button type="button" onclick="setExample('Demonstrate matrix operations with animated transformations')" class="px-3 py-2 text-sm bg-indigo-900 bg-opacity-50 hover:bg-opacity-75 rounded-lg text-white transition-all">
-                            Matrix Operations
-                        </button>
-                        <button type="button" onclick="setExample('Visualize eigenvalues and eigenvectors of a 2x2 matrix')" class="px-3 py-2 text-sm bg-indigo-900 bg-opacity-50 hover:bg-opacity-75 rounded-lg text-white transition-all">
-                            Eigenvalues
-                        </button>
-                        <button type="button" onclick="setExample('Show how complex numbers multiply using rotation and scaling')" class="px-3 py-2 text-sm bg-indigo-900 bg-opacity-50 hover:bg-opacity-75 rounded-lg text-white transition-all">
-                            Complex Numbers
-                        </button>
-                        <button type="button" onclick="setExample('Animate solutions to a simple differential equation')" class="px-3 py-2 text-sm bg-indigo-900 bg-opacity-50 hover:bg-opacity-75 rounded-lg text-white transition-all">
-                            Differential Equations
-                        </button>
-                    </div>
-                </div> -->
-
-                <!-- Generate Button -->
-                <div class="flex justify-center">
-                    <button type="submit" class="px-8 py-3 rounded-lg text-black font-medium text-lg border border-gray-300 bg-white hover:bg-gray-100 shadow flex items-center space-x-2">
-                        <span>Generate Animation</span>
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                        </svg>
+                <div class="text-right">
+                    <button 
+                        type="submit" 
+                        class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    >
+                        Generate
                     </button>
                 </div>
             </form>
         </div>
 
-        <!-- Results Section -->
-        <div id="results" class="space-y-8 hidden">
-            <!-- Code and Animation Container -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Generated Code -->
-                <div class="glass-card rounded-xl p-6 h-[400px] flex flex-col">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-lg font-semibold">Generated Manim Code</h3>
-                        <button id="copyCode" class="text-indigo-400 hover:text-indigo-300 flex items-center space-x-2">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                            </svg>
-                            <span>Copy Code</span>
-                        </button>
-                    </div>
-                    <div class="flex-1 overflow-auto">
-                        <pre class="h-full"><code class="language-python" id="generatedCode">
-# Your generated code will appear here
-                        </code></pre>
-                    </div>
-                </div>
-
-                <!-- Animation Preview -->
-                <div class="glass-card rounded-xl p-6 h-[400px] flex flex-col">
-                    <h3 class="text-lg font-semibold mb-4">Animation Preview</h3>
-                    <div class="flex-1 bg-black rounded-lg overflow-hidden">
-                        <video id="animationPreview" class="w-full h-full object-contain" controls>
-                            Your browser does not support the video tag.
-                        </video>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Download Section -->
-            <div class="flex justify-center space-x-4">
-                <a id="downloadVideo" href="#" class="gradient-button px-6 py-2 rounded-lg text-white font-medium flex items-center space-x-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    <span>Download MP4</span>
-                </a>
-            </div>
+        <div id="loading" class="hidden text-center py-8">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+            <p class="mt-4 text-slate-600">Generating visualization...</p>
         </div>
 
-        <!-- Loading State -->
-        <div id="loading" class="hidden">
-            <div class="flex flex-col items-center justify-center py-12">
-                <div class="loading-spinner mb-4"></div>
-                <p class="text-lg text-gray-300" id="loadingText">Generating your animation...</p>
-                <p class="text-sm text-gray-400 mt-2">This may take a few moments</p>
-            </div>
-        </div>
+        <div id="error" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-8"></div>
 
-        <!-- Error State -->
-        <div id="error" class="hidden">
-            <div class="glass-card rounded-xl p-6 border border-red-500">
-                <div class="flex items-center space-x-3 text-red-400">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <h3 class="text-lg font-medium">Error</h3>
+        <div id="results" class="hidden">
+            <div class="flex flex-col md:flex-row gap-8">
+                <!-- Video Visualization -->
+                <div id="videoContainer" class="visualization-container hidden flex-1">
+                    <h2 class="text-xl font-semibold text-slate-700 mb-4">Video Animation</h2>
+                    <video id="videoPlayer" controls class="w-full rounded-lg shadow-md">
+                        Your browser does not support the video tag.
+                    </video>
                 </div>
-                <p class="mt-2 text-gray-300" id="errorMessage">Something went wrong. Please try again.</p>
+                <!-- HTML Visualization -->
+                <div id="htmlContainer" class="visualization-container hidden flex-1">
+                    <h2 class="text-xl font-semibold text-slate-700 mb-4">Interactive Visualization</h2>
+                    <iframe id="htmlVisualization" frameborder="0"></iframe>
+                </div>
             </div>
         </div>
     </div>
-</div>
-{% endblock %}
 
-{% block scripts %}
-<script>
-    document.getElementById('generationForm').addEventListener('submit', async function(e) {
-        e.preventDefault();
-
-        const concept = document.getElementById('concept').value.trim();
-        if (!concept) {
-            showError('Please enter a mathematical concept to visualize.');
-            return;
-        }
-
-        // Show loading state
-        document.getElementById('loading').classList.remove('hidden');
-        document.getElementById('results').classList.add('hidden');
-        document.getElementById('error').classList.add('hidden');
-
-        try {
-            const response = await fetch('/generate', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    concept: concept
-                })
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error || 'Failed to generate animation');
+    <script>
+        document.getElementById('generateForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const concept = document.getElementById('concept').value.trim();
+            if (!concept) return;
+            
+            // Show loading, hide other sections
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('error').classList.add('hidden');
+            document.getElementById('results').classList.add('hidden');
+            document.getElementById('videoContainer').classList.add('hidden');
+            document.getElementById('htmlContainer').classList.add('hidden');
+            
+            try {
+                const response = await fetch('/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ concept }),
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to generate visualization');
+                }
+                
+                // Show results container
+                document.getElementById('results').classList.remove('hidden');
+                
+                // Handle video visualization
+                if (data.video_url) {
+                    const videoContainer = document.getElementById('videoContainer');
+                    const videoPlayer = document.getElementById('videoPlayer');
+                    videoPlayer.src = data.video_url;
+                    videoContainer.classList.remove('hidden');
+                }
+                
+                // Handle HTML visualization
+                if (data.html_url) {
+                    const htmlContainer = document.getElementById('htmlContainer');
+                    const htmlVisualization = document.getElementById('htmlVisualization');
+                    htmlVisualization.src = data.html_url;
+                    htmlContainer.classList.remove('hidden');
+                }
+                
+            } catch (error) {
+                const errorElement = document.getElementById('error');
+                errorElement.textContent = error.message;
+                errorElement.classList.remove('hidden');
+            } finally {
+                document.getElementById('loading').classList.add('hidden');
             }
-
-            // Update UI with results
-            document.getElementById('generatedCode').textContent = data.code;
-            document.getElementById('animationPreview').src = data.video_url;
-            document.getElementById('downloadVideo').href = data.video_url;
-
-            // Show results
-            document.getElementById('results').classList.remove('hidden');
-            Prism.highlightAll();
-
-        } catch (error) {
-            showError(error.message || 'Something went wrong. Please try again.');
-        } finally {
-            document.getElementById('loading').classList.add('hidden');
-        }
-    });
-
-    function showError(message) {
-        const errorDiv = document.getElementById('error');
-        document.getElementById('errorMessage').textContent = message;
-        errorDiv.classList.remove('hidden');
-    }
-
-    function setExample(text) {
-        document.getElementById('concept').value = text;
-    }
-
-    const copyCodeBtn = document.getElementById('copyCode');
-    copyCodeBtn.addEventListener('click', function() {
-        navigator.clipboard.writeText(document.getElementById('generatedCode').textContent).then(() => {
-            const originalText = this.innerHTML;
-            this.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg><span>Copied!</span>';
-            setTimeout(() => {
-                this.innerHTML = originalText;
-            }, 2000);
         });
-    });
-</script>
-{% endblock %}
+
+        // Listen for messages from iframe to resize it
+        window.addEventListener('message', (event) => {
+            // It's a good practice to check the origin for security
+            // if (event.origin !== 'expected_origin') return;
+
+            if (event.data && event.data.type === 'resize-iframe') {
+                const htmlVisualization = document.getElementById('htmlVisualization');
+                if (htmlVisualization && event.data.height) {
+                    htmlVisualization.style.height = event.data.height + 'px';
+                }
+            }
+        });
+    </script>
+</body>
+</html>
