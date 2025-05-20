@@ -175,9 +175,9 @@ def generate_manim_code(concept):
 
     Returns ``None`` if code generation fails."""
     if not gemini_model_manim:
-        app.logger.error(
-            "Gemini Manim model not initialized. Skipping video generation.")
-        return None
+    app.logger.error(
+        "Gemini Manim model not initialized. Skipping video generation.")
+    return None
 
     prompt = generate_manim_prompt(concept) # Your existing detailed prompt for Manim
     app.logger.info(f"Attempting to generate Manim code via Gemini for concept: {concept}")
@@ -204,19 +204,14 @@ def generate_manim_code(concept):
         if manim_code.endswith("```"):
             manim_code = manim_code[:-len("```")].strip()
         
-        if not (
-            "class MainScene(Scene):" in manim_code or
-            "class MainScene(ThreeDScene):" in manim_code
-        ):
-            app.logger.error(
-                f"Gemini generated Manim code for '{concept}' does not appear valid (missing MainScene). Received: {manim_code[:300]}")
-            return None
-
+        if not ("class MainScene(Scene):" in manim_code or "class MainScene(ThreeDScene):" in manim_code):
+          app.logger.error(f"Gemini generated Manim code for '{concept}' does not appear valid (missing MainScene).")
+          return None
+    
         app.logger.info(f"Gemini AI Manim code for '{concept}' generated successfully.")
         return manim_code
     except Exception as e:
-        app.logger.error(
-            f"Error during Gemini AI Manim code generation for '{concept}': {str(e)}")
+        app.logger.error(f"Error during Gemini AI Manim code generation for '{concept}': {str(e)}")
         return None
 
 def select_template(concept):
@@ -1005,7 +1000,7 @@ def generate_video(concept, temp_dir):
             manim_code = select_template(concept.lower())
         except Exception as template_error:
             logger.error(f'Template selection error: {str(template_error)}')
-            manim_code = None
+            return None
         
         if not manim_code:
             return None
