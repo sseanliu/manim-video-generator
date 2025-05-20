@@ -1057,10 +1057,10 @@ def generate_video(concept, temp_dir):
             logger.error(f'Video not found in any of these locations: {possible_paths}')
             return None
         
-        # Always try to generate HTML visualization if a template exists
+        # Attempt to generate an HTML visualization if possible
         try:
             html_template = html_generator.generate_visualization(concept)
-            html_url = html_generator.get_template_url(html_template)
+            html_url = html_generator.get_template_url(html_template) if html_template else None
         except Exception as e:
             app.logger.error(f"Error generating HTML visualization: {str(e)}")
             html_url = None

@@ -31,11 +31,14 @@ class HTMLGenerator:
         
         # Select appropriate template based on concept
         html_content = self._generate_html_via_ai(concept)
-        
+
+        if html_content is None:
+            return None
+
         # Save the template
         with open(template_path, 'w') as f:
             f.write(html_content)
-            
+
         return template_name
     
     def _generate_html_via_ai(self, concept: str) -> str:
@@ -44,9 +47,8 @@ class HTMLGenerator:
         using an AI model.
         """
         if not self.model:
-            self.app.logger.error("Google AI model not initialized. Falling back to demo.html.")
-            with open(os.path.join(self.templates_dir, 'demo.html'), 'r', encoding='utf-8') as f:
-                return f.read()
+            self.app.logger.error("Google AI model not initialized. Skipping HTML generation.")
+            return None
 
         self.app.logger.info(f"Attempting to generate AI HTML Canvas with Gemini for concept: {concept}")
         # Prompt might need slight adjustments for Gemini if output is not as expected.
@@ -120,9 +122,8 @@ Output ONLY the raw HTML code. The entire response must be a single block of HTM
             return generated_html
         except Exception as e:
             self.app.logger.error(f"Error generating HTML canvas via Gemini for '{concept}': {str(e)}")
-            self.app.logger.info("Falling back to demo.html for HTML visualization due to Gemini AI error.")
-            with open(os.path.join(self.templates_dir, 'demo.html'), 'r', encoding='utf-8') as f:
-                return f.read()
+            self.app.logger.info("Skipping HTML visualization due to Gemini AI error.")
+            return None
     
     def get_template_url(self, template_name):
         """Get the URL for the template"""
