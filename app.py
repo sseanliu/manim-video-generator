@@ -753,9 +753,12 @@ class MainScene(Scene):
             )
         )
         
-        # Create labels
-        sin_label = Text("sin(θ)").next_to(x_line).set_color(GREEN)
-        cos_label = Text("cos(θ)").next_to(y_line).set_color(RED)
+        # Create labels that follow the lines
+        sin_label = Text("sin(θ)", color=GREEN)
+        sin_label.add_updater(lambda m: m.next_to(x_line))
+
+        cos_label = Text("cos(θ)", color=RED)
+        cos_label.add_updater(lambda m: m.next_to(y_line))
         
         # Add everything to scene
         self.play(Create(plane), Write(x_label), Write(y_label))
