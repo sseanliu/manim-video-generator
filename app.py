@@ -173,8 +173,8 @@ Output ONLY valid Manim Python code for a single class `MainScene`. Do not inclu
 def generate_manim_code(concept):
     """Generate Manim code based on the concept using Gemini AI."""
     if not gemini_model_manim:
-        app.logger.error("Gemini Manim model not initialized. Falling back to basic code.")
-        return generate_basic_visualization_code()
+        app.logger.error("Gemini Manim model not initialized. Skipping code generation.")
+        return None
 
     prompt = generate_manim_prompt(concept) # Your existing detailed prompt for Manim
     app.logger.info(f"Attempting to generate Manim code via Gemini for concept: {concept}")
@@ -201,14 +201,14 @@ def generate_manim_code(concept):
             manim_code = manim_code[:-len("```")].strip()
         
         if not ("class MainScene(Scene):" in manim_code or "class MainScene(ThreeDScene):" in manim_code):
-            app.logger.error(f"Gemini generated Manim code for '{concept}' does not appear valid (missing MainScene). Fallback. Received: {manim_code[:300]}")
-            return generate_basic_visualization_code()
+            app.logger.error(f"Gemini generated Manim code for '{concept}' does not appear valid (missing MainScene).")
+            return None
 
         app.logger.info(f"Gemini AI Manim code for '{concept}' generated successfully.")
         return manim_code
     except Exception as e:
         app.logger.error(f"Error during Gemini AI Manim code generation for '{concept}': {str(e)}")
-        return generate_basic_visualization_code()
+        return None
 
 def select_template(concept):
     app.logger.info(f"Defaulting to AI (Gemini) Manim code generation for '{concept}'")
@@ -996,8 +996,7 @@ def generate_video(concept, temp_dir):
             manim_code = select_template(concept.lower())
         except Exception as template_error:
             logger.error(f'Template selection error: {str(template_error)}')
-            # Fallback to basic visualization if template selection fails
-            manim_code = generate_basic_visualization_code()
+            return None
         
         if not manim_code:
             return None
@@ -1057,10 +1056,10 @@ def generate_video(concept, temp_dir):
             logger.error(f'Video not found in any of these locations: {possible_paths}')
             return None
         
-        # Always try to generate HTML visualization if a template exists
+        # Attempt to generate an HTML visualization if possible
         try:
             html_template = html_generator.generate_visualization(concept)
-            html_url = html_generator.get_template_url(html_template)
+            html_url = html_generator.get_template_url(html_template) if html_template else None
         except Exception as e:
             app.logger.error(f"Error generating HTML visualization: {str(e)}")
             html_url = None
