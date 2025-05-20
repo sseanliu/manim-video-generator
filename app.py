@@ -171,10 +171,13 @@ Output ONLY valid Manim Python code for a single class `MainScene`. Do not inclu
 """
 
 def generate_manim_code(concept):
-    """Generate Manim code based on the concept using Gemini AI."""
+    """Generate Manim code based on the concept using Gemini AI.
+
+    Returns ``None`` if code generation fails."""
     if not gemini_model_manim:
-        app.logger.error("Gemini Manim model not initialized. Skipping code generation.")
-        return None
+    app.logger.error(
+        "Gemini Manim model not initialized. Skipping video generation.")
+    return None
 
     prompt = generate_manim_prompt(concept) # Your existing detailed prompt for Manim
     app.logger.info(f"Attempting to generate Manim code via Gemini for concept: {concept}")
@@ -189,8 +192,9 @@ def generate_manim_code(concept):
         )
         
         if not response.candidates or not response.candidates[0].content.parts:
-            app.logger.error(f"Gemini Manim code generation for '{concept}' returned no content or parts.")
-            raise ValueError("No content from Gemini model for Manim")
+            app.logger.error(
+                f"Gemini Manim code generation for '{concept}' returned no content or parts.")
+            return None
 
         manim_code = response.candidates[0].content.parts[0].text.strip()
 
@@ -201,9 +205,9 @@ def generate_manim_code(concept):
             manim_code = manim_code[:-len("```")].strip()
         
         if not ("class MainScene(Scene):" in manim_code or "class MainScene(ThreeDScene):" in manim_code):
-            app.logger.error(f"Gemini generated Manim code for '{concept}' does not appear valid (missing MainScene).")
-            return None
-
+          app.logger.error(f"Gemini generated Manim code for '{concept}' does not appear valid (missing MainScene).")
+          return None
+    
         app.logger.info(f"Gemini AI Manim code for '{concept}' generated successfully.")
         return manim_code
     except Exception as e:
