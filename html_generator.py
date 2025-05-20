@@ -66,7 +66,7 @@ The HTML page MUST include:
             let pageHeight = 0;
             if (document.body) {{ pageHeight = Math.max(document.body.scrollHeight, document.body.offsetHeight); }}
             if (document.documentElement) {{ pageHeight = Math.max(pageHeight, document.documentElement.scrollHeight, document.documentElement.offsetHeight, document.documentElement.clientHeight); }}
-            const finalHeight = pageHeight + 30; // Buffer
+            const finalHeight = pageHeight; // Use measured content height
             if (window.parent && typeof window.parent.postMessage === 'function') {{ window.parent.postMessage({{ type: 'resize-iframe', height: finalHeight }}, '*'); }}
         }}
         window.addEventListener('load', sendHeightToParent);
