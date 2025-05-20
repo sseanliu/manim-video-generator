@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sine and Cosine on Unit Circle</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Prevent scrollbars due to potential canvas size issues before resize */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh; /* Ensure body takes at least viewport height */
+        }
+        .canvas-container {
+            width: 100%; /* Container takes full width */
+            max-width: 800px; /* Optional: Limit max width */
+            position: relative; /* Needed if adding absolute positioned elements later */
+            box-sizing: border-box; /* Include padding/border in element's total width and height */
+            /* Add aspect ratio padding if needed, but auto height on canvas is simpler */
+        }
+        canvas {
+            display: block; /* Remove extra space below canvas */
+            width: 100%; /* Canvas element takes full width of container */
+            height: auto; /* Height scales proportionally */
+            max-width: 100%; /* Ensure it doesn't exceed container */
+            background-color: #f0f0f0; /* Light background for visibility */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="canvas-container">
+        <canvas id="interactiveCanvas"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('interactiveCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let angle = Math.PI / 4; // Start at 45 degrees
+        let isDragging = false;
+
+        // Function to send height to parent iframe
+        function sendHeightToParent() {
+            let pageHeight = 0;
+            if (document.body) { pageHeight = Math.max(document.body.scrollHeight, document.body.offsetHeight); }
+            if (document.documentElement) { pageHeight = Math.max(pageHeight, document.documentElement.scrollHeight, document.documentElement.offsetHeight, document.documentElement.clientHeight); }
+            const finalHeight = pageHeight; // Use measured content height
+            if (window.parent && typeof window.parent.postMessage === 'function') { window.parent.postMessage({ type: 'resize-iframe', height: finalHeight }, '*'); }
+        }
+
+        function setupCanvasAndDraw() {
+            // Set canvas drawing surface size based on its display size
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.width; // Make it square based on width for unit circle
+
+            const width = canvas.width;
+            const height = canvas.height;
+            const centerX = width / 2;
+            const centerY = height / 2;
+            const radius = Math.min(width, height) * 0.4; // Radius is 40% of the smaller dimension
+
+            ctx.clearRect(0, 0, width, height);
+
+            // Draw Axes
+            ctx.strokeStyle = '#aaa';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(0, centerY);
+            ctx.lineTo(width, centerY);
+            ctx.moveTo(centerX, 0);
+            ctx.lineTo(centerX, height);
+            ctx.stroke();
+
+            // Draw Unit Circle
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Draw point on circle
+            const pointX = centerX + radius * Math.cos(angle);
+            const pointY = centerY - radius * Math.sin(angle); // Y is inverted in canvas
+
+            ctx.fillStyle = 'blue';
+            ctx.beginPath();
+            ctx.arc(pointX, pointY, 6, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Draw Cosine line (horizontal)
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.lineTo(pointX, centerY);
+            ctx.stroke();
+
+            // Draw Sine line (vertical)
+            ctx.strokeStyle = 'green';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(pointX, centerY);
+            ctx.lineTo(pointX, pointY);
+            ctx.stroke();
+
+            // Add labels
+            ctx.font = '14px Arial';
+            ctx.fillStyle = '#000';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            // Cosine label
+            const cosLabelX = centerX + (pointX - centerX) / 2;
+            const cosLabelY = centerY + 15;
+            ctx.fillText('cos(θ)', cosLabelX, cosLabelY);
+
+            // Sine label
+            const sinLabelX = pointX + (pointX > centerX ? 20 : -20);
+            const sinLabelY = centerY + (pointY - centerY) / 2;
+             ctx.textAlign = pointX > centerX ? 'left' : 'right';
+             ctx.fillText('sin(θ)', sinLabelX, sinLabelY);
+             ctx.textAlign = 'center'; // Reset
+
+            // Angle label (optional, could show value)
+            const angleDegrees = (angle * 180 / Math.PI).toFixed(0);
+             ctx.fillStyle = 'purple';
+             ctx.fillText(`θ = ${angleDegrees}°`, centerX, centerY - radius - 15);
+
+
+            // Draw angle arc
+            ctx.strokeStyle = 'purple';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius * 0.2, 0, -angle, true); // Draw arc from 0 to -angle (clockwise)
+            ctx.stroke();
+
+            // Call sendHeightToParent after drawing is complete
+            sendHeightToParent();
+        }
+
+        // Interactivity
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            const width = canvas.width;
+            const height = canvas.height;
+            const centerX = width / 2;
+            const centerY = height / 2;
+            const radius = Math.min(width, height) * 0.4;
+
+            const pointX = centerX + radius * Math.cos(angle);
+            const pointY = centerY - radius * Math.sin(angle);
+
+            const dist = Math.sqrt((mouseX - pointX) ** 2 + (mouseY - pointY) ** 2);
+
+            if (dist < 15) { // Check if click is near the point
+                isDragging = true;
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            const width = canvas.width;
+            const height = canvas.height;
+            const centerX = width / 2;
+            const centerY = height / 2;
+
+            // Calculate angle from mouse position relative to center
+            // atan2(y, x) gives angle in radians from positive x-axis
+            // Canvas Y is inverted, so use (centerY - mouseY)
+            angle = Math.atan2(centerY - mouseY, mouseX - centerX);
+
+            setupCanvasAndDraw(); // Redraw with new angle
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        canvas.addEventListener('mouseout', () => {
+             isDragging = false; // Stop dragging if mouse leaves canvas
+        });
+
+
+        // Initial setup and draw
+        window.addEventListener('load', () => {
+            setupCanvasAndDraw();
+            sendHeightToParent(); // Ensure height is sent after initial load and draw
+        });
+
+        // Responsive redraw on resize
+        window.addEventListener('resize', () => {
+            setupCanvasAndDraw(); // setupCanvasAndDraw calls sendHeightToParent internally
+        });
+
+        // Also call sendHeightToParent after any potential dynamic content changes,
+        // which in this case is handled by calling it at the end of setupCanvasAndDraw.
+
+    </script>
+
+</body>
+</html>

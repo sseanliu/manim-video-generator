@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sine and Cosine on Unit Circle</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden; /* Prevent horizontal scroll */
+            display: flex;
+            justify-content: center; /* Center content horizontally */
+            align-items: flex-start; /* Align content to the top */
+            min-height: 100vh; /* Ensure body takes at least full viewport height */
+        }
+        .canvas-container {
+            width: 100%; /* Allow container to take full width up to max-width */
+            max-width: 600px; /* Set a maximum width for the visualization */
+            margin: 20px auto; /* Center the container and add vertical margin */
+            position: relative; /* Needed for potential absolute positioning inside */
+            /* Optional: Add padding if needed, but keep it minimal */
+            /* padding: 10px; */
+            box-sizing: border-box; /* Include padding in width */
+        }
+        canvas {
+            display: block; /* Remove extra space below canvas */
+            width: 100%; /* Canvas display width matches container width */
+            height: auto; /* Height will be set by JS to maintain aspect ratio */
+            max-width: 100%; /* Ensure canvas doesn't exceed container */
+            /* border: 1px solid #ccc; Optional border for visualization */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="canvas-container">
+        <canvas id="interactiveCanvas"></canvas>
+    </div>
+
+    <script>
+        // Global variables for canvas, context, angle, dragging state
+        let canvas, ctx;
+        let angle = Math.PI / 4; // Start at 45 degrees (PI/4 radians)
+        let isDragging = false;
+        let centerX, centerY, radius;
+
+        // Function to calculate responsive parameters and draw
+        function drawUnitCircle() {
+            // Set canvas dimensions to match display width and maintain square aspect ratio
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetWidth; // Make it square based on width
+
+            // Check if context is available
+            if (!ctx) {
+                 console.error("Canvas context not available.");
+                 return;
+            }
+
+            // Calculate responsive parameters
+            const size = Math.min(canvas.width, canvas.height); // Should be the same now
+            centerX = canvas.width / 2;
+            centerY = canvas.height / 2;
+            radius = size * 0.4; // Radius is 40% of the dimension
+
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Translate context so (0,0) is the center
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.scale(1, -1); // Flip y-axis so positive is up
+
+            // Draw axes
+            ctx.strokeStyle = '#ccc';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(-centerX, 0); // Extend axes to canvas edges
+            ctx.lineTo(centerX, 0);
+            ctx.moveTo(0, -centerY);
+            ctx.lineTo(0, centerY);
+            ctx.stroke();
+
+            // Draw unit circle
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(0, 0, radius, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Draw point on circle
+            const pointX = radius * Math.cos(angle);
+            const pointY = radius * Math.sin(angle);
+
+            ctx.fillStyle = 'blue';
+            ctx.beginPath();
+            ctx.arc(pointX, pointY, 6, 0, Math.PI * 2); // Slightly larger point
+            ctx.fill();
+
+            // Draw cosine line (x-coordinate)
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(pointX, 0);
+            ctx.lineTo(pointX, pointY);
+            ctx.stroke();
+
+            // Draw sine line (y-coordinate)
+            ctx.strokeStyle = 'green';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, pointY);
+            ctx.lineTo(pointX, pointY);
+            ctx.stroke();
+
+            // Draw radius line
+            ctx.strokeStyle = '#666';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(pointX, pointY);
+            ctx.stroke();
+
+            // Draw angle arc (from positive x-axis to radius)
+            ctx.strokeStyle = '#999';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            // Adjust start and end angles for arc based on quadrant
+            let startAngle = 0;
+            let endAngle = angle;
+            if (angle < 0) { // Handle negative angles from atan2
+                 startAngle = angle;
+                 endAngle = 0;
+            }
+            ctx.arc(0, 0, radius * 0.3, startAngle, endAngle, angle < 0); // Draw arc with smaller radius
+            ctx.stroke();
+
+
+            // Restore context translation and scale for text
+            ctx.restore(); // Restore to original (0,0) at top-left
+
+            // Draw labels
+            ctx.fillStyle = '#000';
+            ctx.font = '14px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            // Cosine label
+            ctx.fillStyle = 'red';
+            // Position text relative to canvas center, adjusting for flipped Y
+            ctx.fillText(`cos = ${Math.cos(angle).toFixed(2)}`, centerX + pointX / 2, centerY - pointY + (pointY > 0 ? 15 : -15));
+
+            // Sine label
+            ctx.fillStyle = 'green';
+             // Position text relative to canvas center, adjusting for flipped Y
+            ctx.fillText(`sin = ${Math.sin(angle).toFixed(2)}`, centerX + pointX + (pointX > 0 ? 20 : -20), centerY - pointY / 2);
+
+            // Angle label (near the arc)
+            ctx.fillStyle = '#000';
+            // Position text near the arc, considering the angle
+            const angleLabelRadius = radius * 0.3 + 20; // Position outside the arc
+            const angleLabelX = centerX + angleLabelRadius * Math.cos(angle / 2); // Position roughly in the middle of the angle
+            const angleLabelY = centerY - angleLabelRadius * Math.sin(angle / 2); // Adjust for flipped Y
+
+            // Handle angle wrapping for display (0 to 2PI)
+            let displayAngle = angle;
+            while (displayAngle < 0) displayAngle += 2 * Math.PI;
+            while (displayAngle >= 2 * Math.PI) displayAngle -= 2 * Math.PI;
+
+
+            ctx.fillText(`${displayAngle.toFixed(2)} rad (${(displayAngle * 180 / Math.PI).toFixed(0)}°)`, angleLabelX, angleLabelY);
+
+            // Call sendHeightToParent after drawing is complete
+            sendHeightToParent();
+        }
+
+        // Mouse event handlers
+        function handleMouseDown(e) {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            // Check if mouse is near the point on the circle
+            // Calculate point coordinates relative to canvas top-left (not translated center)
+            const pointX = centerX + radius * Math.cos(angle);
+            const pointY = centerY - radius * Math.sin(angle); // Remember canvas Y is down
+
+            const distance = Math.sqrt(Math.pow(mouseX - pointX, 2) + Math.pow(mouseY - pointY, 2));
+
+            if (distance < 15) { // Tolerance of 15 pixels
+                isDragging = true;
+                canvas.style.cursor = 'grabbing';
+                e.preventDefault(); // Prevent default drag behavior
+            }
+        }
+
+        function handleMouseMove(e) {
+            if (!isDragging) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            // Calculate angle from mouse position relative to center (in canvas coordinates)
+            const deltaX = mouseX - centerX;
+            const deltaY = centerY - mouseY; // Remember canvas Y is down, so deltaY is inverted relative to math Y
+
+            // Use atan2 to get angle in radians. atan2(y, x)
+            angle = Math.atan2(-deltaY, deltaX); // Use -deltaY because canvas Y is inverted
+
+            drawUnitCircle(); // Redraw with new angle
+            e.preventDefault(); // Prevent default drag behavior
+        }
+
+        function handleMouseUp() {
+            if (isDragging) {
+                isDragging = false;
+                canvas.style.cursor = 'grab';
+                 // No need to redraw here unless something changes on mouse up
+            }
+        }
+
+         function handleMouseOut(e) {
+             // If dragging and mouse leaves the canvas, stop dragging
+             if (isDragging) {
+                 handleMouseUp();
+             }
+         }
+
+
+        // Setup function
+        function setupCanvasAndDraw() {
+            canvas = document.getElementById('interactiveCanvas');
+            if (!canvas) {
+                console.error("Canvas element not found!");
+                return;
+            }
+            ctx = canvas.getContext('2d');
+
+            // Remove previous listeners to prevent duplicates on resize
+            canvas.removeEventListener('mousedown', handleMouseDown);
+            canvas.removeEventListener('mousemove', handleMouseMove);
+            canvas.removeEventListener('mouseup', handleMouseUp);
+            canvas.removeEventListener('mouseout', handleMouseOut);
+
+            // Add event listeners
+            canvas.addEventListener('mousedown', handleMouseDown);
+            canvas.addEventListener('mousemove', handleMouseMove);
+            canvas.addEventListener('mouseup', handleMouseUp);
+            canvas.addEventListener('mouseout', handleMouseOut); // Stop dragging if mouse leaves canvas
+
+            // Initial draw
+            drawUnitCircle();
+        }
+
+        // sendHeightToParent function (verbatim)
+        function sendHeightToParent() {
+            let pageHeight = 0;
+            if (document.body) { pageHeight = Math.max(document.body.scrollHeight, document.body.offsetHeight); }
+            if (document.documentElement) { pageHeight = Math.max(pageHeight, document.documentElement.scrollHeight, document.documentElement.offsetHeight, document.documentElement.clientHeight); }
+            const finalHeight = pageHeight; // Use measured content height
+            if (window.parent && typeof window.parent.postMessage === 'function') { window.parent.postMessage({ type: 'resize-iframe', height: finalHeight }, '*'); }
+        }
+
+        // Event listeners for setup and resize
+        window.addEventListener('load', () => {
+            setupCanvasAndDraw();
+            // sendHeightToParent is called at the end of drawUnitCircle
+        });
+        window.addEventListener('resize', () => {
+            setupCanvasAndDraw(); // This will redraw and call sendHeightToParent internally
+        });
+
+        // Set initial cursor style when DOM is ready
+        window.addEventListener('DOMContentLoaded', () => {
+            const canvasElement = document.getElementById('interactiveCanvas');
+            if (canvasElement) {
+                canvasElement.style.cursor = 'grab';
+            }
+        });
+
+    </script>
+
+</body>
+</html>

@@ -175,12 +175,12 @@ def generate_manim_code(concept):
 
     Returns ``None`` if code generation fails."""
     if not gemini_model_manim:
-    app.logger.error(
-        "Gemini Manim model not initialized. Skipping video generation.")
-    return None
+        app.logger.error(
+            "Gemini Manim model not initialized. Skipping video generation.")
+        return None
 
     prompt = generate_manim_prompt(concept) # Your existing detailed prompt for Manim
-    app.logger.info(f"Attempting to generate Manim code via Gemini for concept: {concept}")
+    app.logger.info("Attempting to generate Manim code via Gemini for concept: %s", concept)
     try:
         generation_config = genai.types.GenerationConfig(
             candidate_count=1,
@@ -193,7 +193,7 @@ def generate_manim_code(concept):
         
         if not response.candidates or not response.candidates[0].content.parts:
             app.logger.error(
-                f"Gemini Manim code generation for '{concept}' returned no content or parts.")
+                "Gemini Manim code generation for '%s' returned no content or parts.", concept)
             return None
 
         manim_code = response.candidates[0].content.parts[0].text.strip()
@@ -205,17 +205,17 @@ def generate_manim_code(concept):
             manim_code = manim_code[:-len("```")].strip()
         
         if not ("class MainScene(Scene):" in manim_code or "class MainScene(ThreeDScene):" in manim_code):
-          app.logger.error(f"Gemini generated Manim code for '{concept}' does not appear valid (missing MainScene).")
+          app.logger.error("Gemini generated Manim code for '%s' does not appear valid (missing MainScene).", concept)
           return None
     
-        app.logger.info(f"Gemini AI Manim code for '{concept}' generated successfully.")
+        app.logger.info("Gemini AI Manim code for '%s' generated successfully.", concept)
         return manim_code
     except Exception as e:
-        app.logger.error(f"Error during Gemini AI Manim code generation for '{concept}': {str(e)}")
+        app.logger.error("Error during Gemini AI Manim code generation for '%s': %s", concept, str(e))
         return None
 
 def select_template(concept):
-    app.logger.info(f"Defaulting to AI (Gemini) Manim code generation for '{concept}'")
+    app.logger.info("Defaulting to AI (Gemini) Manim code generation for %r", concept)
     return generate_manim_code(concept)
 
 def generate_pythagorean_code():
@@ -999,7 +999,7 @@ def generate_video(concept, temp_dir):
         try:
             manim_code = select_template(concept.lower())
         except Exception as template_error:
-            logger.error(f'Template selection error: {str(template_error)}')
+            logger.error('Template selection error: %s', str(template_error))
             return None
         
         if not manim_code:
@@ -1010,7 +1010,7 @@ def generate_video(concept, temp_dir):
         with open(code_file, 'w') as f:
             f.write(manim_code)
         
-        app.logger.info(f"--- AI Generated Manim Code ---\n{manim_code}\n-------------------------------")
+        app.logger.info("--- AI Generated Manim Code ---\n%s\n-------------------------------", manim_code)
 
         # Create media directory
         media_dir = os.path.join(temp_dir, 'media')
@@ -1038,7 +1038,7 @@ def generate_video(concept, temp_dir):
         
         if result.returncode != 0:
             error_msg = result.stderr if result.stderr else 'Unknown error during animation generation'
-            logger.error(f'Manim error: {error_msg}')
+            logger.error('Manim error: %s', error_msg)
             return None
         
         # Look for the video file in multiple possible locations
@@ -1057,7 +1057,7 @@ def generate_video(concept, temp_dir):
                 break
         
         if not video_found:
-            logger.error(f'Video not found in any of these locations: {possible_paths}')
+            logger.error('Video not found in any of these locations: %s', possible_paths)
             return None
         
         # Attempt to generate an HTML visualization if possible
@@ -1065,7 +1065,7 @@ def generate_video(concept, temp_dir):
             html_template = html_generator.generate_visualization(concept)
             html_url = html_generator.get_template_url(html_template) if html_template else None
         except Exception as e:
-            app.logger.error(f"Error generating HTML visualization: {str(e)}")
+            app.logger.error("Error generating HTML visualization: %s", str(e))
             html_url = None
         
         return {
@@ -1079,7 +1079,7 @@ def generate_video(concept, temp_dir):
         logger.error('Animation generation timed out')
         return None
     except Exception as e:
-        logger.error(f'Error in generate_video: {str(e)}')
+        logger.error('Error in generate_video: %s', str(e))
         return None
 
 @app.route('/')
