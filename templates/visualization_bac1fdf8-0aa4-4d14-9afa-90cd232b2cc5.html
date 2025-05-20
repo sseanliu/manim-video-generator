@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sine and Cosine on Unit Circle</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Prevent scrollbars caused by potential canvas sizing issues before sendHeightToParent */
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* Align items to the top */
+            min-height: 100vh; /* Ensure body takes at least viewport height initially */
+        }
+        .canvas-container {
+            width: 100%;
+            max-width: 800px; /* Optional: Limit max width for very large screens */
+            margin: 0 auto; /* Center the container */
+            position: relative; /* Needed for potential absolute positioning inside */
+            box-sizing: border-box; /* Include padding/border in element's total width/height */
+        }
+        #interactiveCanvas {
+            display: block;
+            width: 100%; /* Canvas takes full width of container */
+            height: auto; /* Height scales proportionally */
+            max-width: 100%; /* Ensure it doesn't exceed container width */
+            background-color: #f0f0f0; /* Light background for visibility */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="canvas-container">
+        <canvas id="interactiveCanvas"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('interactiveCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let angle = Math.PI / 4; // Start at 45 degrees (PI/4 radians)
+        let isDragging = false;
+
+        let centerX, centerY, radius;
+        let canvasWidth, canvasHeight;
+
+        function setupCanvasAndDraw() {
+            // Get the actual rendered size of the canvas element
+            canvasWidth = canvas.clientWidth;
+            canvasHeight = canvas.clientHeight;
+
+            // Set the internal drawing buffer size
+            canvas.width = canvasWidth;
+            canvas.height = canvasHeight;
+
+            // Calculate responsive drawing parameters
+            centerX = canvasWidth / 2;
+            centerY = canvasHeight / 2;
+            // Radius should be smaller than half the smallest dimension to fit axes and labels
+            radius = Math.min(canvasWidth, canvasHeight) * 0.4;
+
+            drawUnitCircle();
+
+            // Call sendHeightToParent after drawing is complete
+            sendHeightToParent();
+        }
+
+        function drawUnitCircle() {
+            ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+            ctx.save(); // Save default state
+            ctx.translate(centerX, centerY); // Move origin to center
+
+            // Draw Axes
+            ctx.strokeStyle = '#aaa';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(-radius - 20, 0);
+            ctx.lineTo(radius + 20, 0);
+            ctx.moveTo(0, -radius - 20);
+            ctx.lineTo(0, radius + 20);
+            ctx.stroke();
+
+            // Draw Unit Circle
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(0, 0, radius, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Draw Angle Arc
+            ctx.strokeStyle = '#00f';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(0, 0, radius * 0.2, 0, -angle, angle > 0); // Draw arc from 0 to -angle (clockwise from positive x-axis)
+            ctx.stroke();
+
+            // Draw Point on Circle
+            const pointX = radius * Math.cos(angle);
+            const pointY = -radius * Math.sin(angle); // Y is inverted in canvas
+
+            ctx.fillStyle = '#f00';
+            ctx.beginPath();
+            ctx.arc(pointX, pointY, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Draw Cosine Line (adjacent)
+            ctx.strokeStyle = '#0a0'; // Green
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(pointX, 0);
+            ctx.stroke();
+
+            // Draw Sine Line (opposite)
+            ctx.strokeStyle = '#00f'; // Blue
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(pointX, 0);
+            ctx.lineTo(pointX, pointY);
+            ctx.stroke();
+
+            // Add Labels
+            ctx.fillStyle = '#000';
+            ctx.font = '14px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            // Cosine label
+            const cosLabelX = pointX / 2;
+            const cosLabelY = pointY > 0 ? 15 : -15; // Position above or below based on pointY
+            ctx.fillText('cos(θ)', cosLabelX, cosLabelY);
+
+            // Sine label
+            const sinLabelX = pointX > 0 ? pointX + 20 : pointX - 20; // Position left or right
+            const sinLabelY = pointY / 2;
+             ctx.fillText('sin(θ)', sinLabelX, sinLabelY);
+
+            // Angle label (in degrees)
+            let angleDegrees = (angle * 180 / Math.PI) % 360;
+            if (angleDegrees < 0) angleDegrees += 360;
+            ctx.fillText(`θ ≈ ${angleDegrees.toFixed(0)}°`, radius * 0.3 * Math.cos(-angle/2), radius * 0.3 * Math.sin(-angle/2));
+
+
+            ctx.restore(); // Restore default state
+        }
+
+        // Interactivity
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left - centerX; // Mouse X relative to center
+            const mouseY = e.clientY - rect.top - centerY;   // Mouse Y relative to center
+
+            const dist = Math.sqrt(mouseX * mouseX + mouseY * mouseY);
+
+            // Check if click is near the circle or the current point
+            if (Math.abs(dist - radius) < 15 || dist < 10) { // Tolerance for clicking near circle or center point
+                 isDragging = true;
+                 // Calculate initial angle based on mouse position
+                 angle = Math.atan2(-mouseY, mouseX); // Note: mouseY is inverted
+                 drawUnitCircle();
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left - centerX;
+            const mouseY = e.clientY - rect.top - centerY;
+
+            // Calculate new angle based on mouse position
+            angle = Math.atan2(-mouseY, mouseX); // Note: mouseY is inverted
+
+            drawUnitCircle();
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+         canvas.addEventListener('mouseout', () => {
+            isDragging = false; // Stop dragging if mouse leaves canvas
+        });
+
+
+        // VERBATIM sendHeightToParent() script
+        function sendHeightToParent() {
+            let pageHeight = 0;
+            if (document.body) { pageHeight = Math.max(document.body.scrollHeight, document.body.offsetHeight); }
+            if (document.documentElement) { pageHeight = Math.max(pageHeight, document.documentElement.scrollHeight, document.documentElement.offsetHeight, document.documentElement.clientHeight); }
+            const finalHeight = pageHeight; // Use measured content height
+            if (window.parent && typeof window.parent.postMessage === 'function') { window.parent.postMessage({ type: 'resize-iframe', height: finalHeight }, '*'); }
+        }
+        // END VERBATIM
+
+        // Initial setup and draw
+        window.addEventListener('load', () => {
+            setupCanvasAndDraw();
+        });
+
+        // Responsive setup and draw on resize
+        window.addEventListener('resize', () => {
+            setupCanvasAndDraw(); // This calls drawUnitCircle which calls sendHeightToParent
+        });
+
+        // Ensure initial draw happens even if load event is missed or delayed in some environments
+        // A small timeout can help ensure canvas dimensions are calculated correctly after DOM render
+        setTimeout(setupCanvasAndDraw, 0);
+
+
+    </script>
+
+</body>
+</html>

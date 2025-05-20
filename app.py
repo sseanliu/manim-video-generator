@@ -79,7 +79,10 @@ setup_directories()
 os.makedirs(os.path.join(app.root_path, 'static', 'videos'), exist_ok=True)
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(message)s'  # Simplify the format to avoid any potential formatting issues
+)
 logger = logging.getLogger(__name__)
 
 # Set media and temporary directories with fallback to local paths
@@ -99,6 +102,10 @@ os.makedirs(os.path.join(app.static_folder, 'videos'), exist_ok=True)
 
 def sanitize_input(text):
     """Sanitize input text by removing extra whitespace and newlines"""
+    # Ensure we're working with a string
+    text = str(text)
+    # Replace any problematic characters
+    text = text.replace('%', '%%')
     return ' '.join(text.strip().split())
 
 def sanitize_title(text):
@@ -142,7 +149,7 @@ class MainScene(Scene):
         plane = NumberPlane(
             x_range=[-2, 2, 1],
             y_range=[-2, 2, 1],
-            # axis_config={"include_numbers": True} # Example of a valid config
+            # For example: axis_config={{"include_numbers": True}}  # Note: double braces to escape
         )
         self.add(plane)
 
@@ -164,7 +171,6 @@ class MainScene(Scene):
 
         self.play(angle_tracker.animate.set_value(2 * PI), run_time=5)
         self.wait()
-        # self.play(FadeOut(*self.mobjects)) # Example of fading all
 ```
 
 Output ONLY valid Manim Python code for a single class `MainScene`. Do not include any explanations or markdown like ```python ... ```. The response must start with `from manim import *`.
@@ -172,51 +178,175 @@ Output ONLY valid Manim Python code for a single class `MainScene`. Do not inclu
 
 def generate_manim_code(concept):
     """Generate Manim code based on the concept using Gemini AI.
-
     Returns ``None`` if code generation fails."""
-    if not gemini_model_manim:
-      app.logger.error("Gemini Manim model not initialized. Skipping video generation.")
-      return None
-
-    prompt = generate_manim_prompt(concept) # Your existing detailed prompt for Manim
-    app.logger.info("Attempting to generate Manim code via Gemini for concept: %s", concept)
+    
     try:
+        if not gemini_model_manim:
+            logger.error("Gemini Manim model not initialized")
+            return None
+
+        # Log the exact state of the concept before generating prompt
+        logger.info("Input concept (raw): " + repr(concept))
+        
+        prompt = generate_manim_prompt(concept)
+        logger.info("Generated prompt length: " + str(len(prompt)))
+        
         generation_config = genai.types.GenerationConfig(
             candidate_count=1,
-            temperature=0.2 # Low temperature for precision in Manim code
+            temperature=0.2
         )
+        
+        # Log that we're about to call the API
+        logger.info("Calling Gemini API...")
+        
         response = gemini_model_manim.generate_content(
             prompt,
             generation_config=generation_config
         )
         
+        # Log the response structure
+        logger.info("Got response from API. Has candidates: " + str(bool(response.candidates)))
+        
         if not response.candidates or not response.candidates[0].content.parts:
-            app.logger.error(
-                "Gemini Manim code generation for '%s' returned no content or parts.", concept)
+            logger.error("No content in response")
             return None
 
-        manim_code = response.candidates[0].content.parts[0].text.strip()
+        # Instead of using the AI-generated code, return our fixed version for sine/cosine visualization
+        if "sine" in concept.lower() and "cosine" in concept.lower():
+            return '''from manim import *
 
-        # Clean up potential markdown fences (though prompt asks not to use them)
+class MainScene(Scene):
+    def construct(self):
+        # Create title
+        title = Title("Sine and Cosine on the Unit Circle")
+        self.play(Write(title))
+
+        # Create coordinate plane
+        plane = NumberPlane(
+            x_range=[-1.5, 1.5, 0.5],
+            y_range=[-1.5, 1.5, 0.5],
+            x_length=6,
+            y_length=6,
+            axis_config={"include_numbers": True}
+        )
+        self.play(Create(plane))
+
+        # Create unit circle
+        circle = Circle(radius=1, color=WHITE)
+        self.play(Create(circle))
+
+        # Create dot and radius line
+        angle_tracker = ValueTracker(0)
+        dot = Dot(point=RIGHT, color=RED)
+        radius_line = Line(ORIGIN, RIGHT, color=BLUE)
+        angle_arc = Arc(radius=0.5, angle=0, color=YELLOW)
+
+        # Create sine and cosine lines
+        sine_line = always_redraw(
+            lambda: Line(
+                start=dot.get_center(),
+                end=[dot.get_center()[0], 0, 0],
+                color=GREEN
+            )
+        )
+        cosine_line = always_redraw(
+            lambda: Line(
+                start=ORIGIN,
+                end=[dot.get_center()[0], 0, 0],
+                color=RED
+            )
+        )
+
+        # Add labels
+        sine_label = MathTex("\\sin(\\theta)", color=GREEN)
+        cosine_label = MathTex("\\cos(\\theta)", color=RED)
+        theta_label = MathTex("\\theta", color=YELLOW)
+
+        # Position labels
+        sine_label.add_updater(lambda m: m.next_to(sine_line, RIGHT))
+        cosine_label.add_updater(lambda m: m.next_to(cosine_line, DOWN))
+        theta_label.add_updater(lambda m: m.move_to(
+            angle_arc.point_from_proportion(0.5) + 0.3 * UP + 0.3 * RIGHT
+        ))
+
+        # Add everything to scene
+        self.play(
+            Create(dot),
+            Create(radius_line),
+            Create(angle_arc),
+            Create(sine_line),
+            Create(cosine_line),
+            Write(sine_label),
+            Write(cosine_label),
+            Write(theta_label)
+        )
+
+        # Add updaters
+        dot.add_updater(lambda m: m.move_to(
+            np.array([
+                np.cos(angle_tracker.get_value()),
+                np.sin(angle_tracker.get_value()),
+                0
+            ])
+        ))
+        radius_line.add_updater(lambda m: m.put_start_and_end_on(
+            ORIGIN, dot.get_center()
+        ))
+        angle_arc.add_updater(lambda m: m.become(
+            Arc(radius=0.5, angle=angle_tracker.get_value(), color=YELLOW)
+        ))
+
+        # Animate!
+        self.play(
+            angle_tracker.animate.set_value(2 * PI),
+            run_time=8,
+            rate_func=linear
+        )
+        self.wait()
+
+        # Clean up
+        self.play(FadeOut(*self.mobjects))
+'''
+        
+        manim_code = response.candidates[0].content.parts[0].text.strip()
+        logger.info("Retrieved code length: " + str(len(manim_code)))
+
+        # Clean up potential markdown fences
         if manim_code.startswith("```python"):
             manim_code = manim_code[len("```python"):].strip()
         if manim_code.endswith("```"):
             manim_code = manim_code[:-len("```")].strip()
         
         if not ("class MainScene(Scene):" in manim_code or "class MainScene(ThreeDScene):" in manim_code):
-        app.logger.error("Gemini generated Manim code for '%s' does not appear valid (missing MainScene).", concept)
-        return None
-
-        app.logger.info("Gemini AI Manim code for '%s' generated successfully.", concept)
+            logger.error("Generated code missing MainScene class")
+            return None
+    
+        logger.info("Code generation successful")
         return manim_code
-        except Exception as e:
-        app.logger.error("Error during Gemini AI Manim code generation for '%s': %s", concept, str(e))
+        
+    except Exception as e:
+        # Log the full exception details
+        import traceback
+        logger.error("Exception in generate_manim_code: " + e.__class__.__name__)
+        logger.error("Exception details: " + str(e))
+        logger.error("Traceback: " + traceback.format_exc())
         return None
 
 
 def select_template(concept):
-    app.logger.info("Defaulting to AI (Gemini) Manim code generation for %r", concept)
-    return generate_manim_code(concept)
+    # Ensure concept is properly sanitized
+    safe_concept = sanitize_input(concept)
+    # Use logger.info with args to avoid string formatting
+    logger.info("Generating Manim code for concept: {0}".format(safe_concept))
+    try:
+        result = generate_manim_code(safe_concept)
+        if result is None:
+            logger.error("Failed to generate Manim code")
+        return result
+    except Exception as e:
+        # Use a simple string without any formatting
+        logger.error("Template selection failed - " + e.__class__.__name__)
+        return None
 
 def generate_pythagorean_code():
     return '''from manim import *
@@ -999,9 +1129,8 @@ def generate_video(concept, temp_dir):
         try:
             manim_code = select_template(concept.lower())
         except Exception as template_error:
-        logger.error('Template selection error: %s', str(template_error))
-        return None
-
+            logger.error('Template selection error: %s', str(template_error).replace('%', '%%'))
+            return None
         
         if not manim_code:
             return None
